@@ -6,11 +6,9 @@ Instead of storing files on its own servers, Endless Storage connects directly t
 
 No local persistence. No storage limits tied to a single provider. Just distributed cloud capacity powered by your own infrastructure.
 
-![Endless Storage](docs/secure-share.png)
+![Endless Storage](docs/endless-storage.png)
 
 ## Main Features
-
-### Distributed Multi-Cloud Storage (V2)
 
 - **Automatic File Sharding**
   Files are split into chunks and distributed across multiple connected cloud accounts.
