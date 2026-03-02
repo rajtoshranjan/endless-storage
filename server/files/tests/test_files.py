@@ -1,8 +1,12 @@
+from unittest.mock import MagicMock, patch
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 
 from secure_share.tests import BaseTestCase
+from storage.constants import StorageProvider
+from storage.models import StorageAccount
 
 from ..models import File
 
@@ -12,28 +16,37 @@ class TestFileEndpoints(BaseTestCase):
         super().setUp()
         self.authenticate(self.user)
 
-        # Create test file with proper content
-        self.test_file_content = b"test file content"
+        # Create a storage account for the user
+        self.storage_account = StorageAccount.objects.create(
+            user=self.user,
+            provider=StorageProvider.GOOGLE_DRIVE.value,
+            provider_email="test@gmail.com",
+            access_token="mock-access-token",
+            refresh_token="mock-refresh-token",
+            is_active=True,
+        )
+
+        # Create test file record (no local file, uses external storage)
         self.file = File.objects.create(
             name="test.txt",
-            file=SimpleUploadedFile(
-                "test.txt", self.test_file_content, content_type="text/plain"
-            ),
-            drive=self.default_drive,
             owner=self.user,
+            drive=self.default_drive,
+            storage_account=self.storage_account,
+            external_file_id="mock-external-id-123",
+            mime_type="text/plain",
+            file_size=17,
         )
-        # Save file before encryption
-        self.file.save()
-        self.file.encrypt_file()
 
-    def test_upload_file(self):
+    @patch("storage.connectors.google_drive.GoogleDriveConnector.upload_file")
+    def test_upload_file(self, mock_upload):
         """Test file upload endpoint."""
         # Arrange
+        mock_upload.return_value = "new-external-id-456"
         file_content = b"new file content"
         file = SimpleUploadedFile(
             "new_file.txt", file_content, content_type="text/plain"
         )
-        data = {"file": file}
+        data = {"file": file, "storage_account": str(self.storage_account.id)}
 
         # Act
         response = self.client.post(reverse("file-list"), data, format="multipart")
@@ -42,6 +55,7 @@ class TestFileEndpoints(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["name"], "new_file.txt")
         self.assertTrue(File.objects.filter(name="new_file.txt").exists())
+        mock_upload.assert_called_once()
 
     def test_list_files(self):
         """Test file listing endpoint."""
@@ -53,8 +67,12 @@ class TestFileEndpoints(BaseTestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["name"], "test.txt")
 
-    def test_download_file(self):
+    @patch("storage.connectors.google_drive.GoogleDriveConnector.download_file")
+    def test_download_file(self, mock_download):
         """Test file download endpoint."""
+        # Arrange
+        mock_download.return_value = (b"test file content", "text/plain")
+
         # Act
         response = self.client.get(
             reverse("file-download", kwargs={"pk": self.file.id})
@@ -66,11 +84,12 @@ class TestFileEndpoints(BaseTestCase):
             response.get("Content-Disposition"),
             f'attachment; filename="{self.file.name}"',
         )
-        # Read streaming content
         content = b"".join(response.streaming_content)
-        self.assertEqual(content, self.test_file_content)
+        self.assertEqual(content, b"test file content")
+        mock_download.assert_called_once_with("mock-external-id-123")
 
-    def test_delete_file(self):
+    @patch("storage.connectors.google_drive.GoogleDriveConnector.delete_file")
+    def test_delete_file(self, mock_delete):
         """Test file deletion endpoint."""
         # Act
         response = self.client.delete(
@@ -80,3 +99,4 @@ class TestFileEndpoints(BaseTestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(File.objects.filter(id=self.file.id).exists())
+        mock_delete.assert_called_once_with("mock-external-id-123")

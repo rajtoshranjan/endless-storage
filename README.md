@@ -1,52 +1,55 @@
-# Secure Share
+# Endless Storage
 
-Secure Share is a robust platform designed to simplify and enhance the way users manage and share files. With a focus on security and ease of use, the application provides features like multi-factor authentication, role-based access control, and file encryption to ensure safe and efficient file sharing. Its modern, responsive design ensures accessibility across devices while maintaining a seamless user experience.
+Endless Storage is a modern platform designed to simplify and enhance the way users manage and share files. With a modular backend architecture and a highly responsive frontend, it offers secure authentication, cloud storage integration (Google Drive), and robust file sharing capabilities natively from the browser.
 
-![Secure Share](docs/secure-share.png)
+![Endless Storage](docs/secure-share.png)
 
 ## Main Features
 
-- **Authentication**
-  A secure login system with Multi-Factor Authentication (MFA) using authenticator apps for enhanced security.
+- **Authentication & Security**
+  Secure login system via JWT with Multi-Factor Authentication (MFA) support using authenticator apps.
+- **Cloud Storage Integration (New)**
+  Seamless OAuth2 integration with Google Drive. Files are uploaded securely and directly to your connected Drive account using resumable, chunked uploads.
+
+- **Advanced File Management**
+  - **Direct Uploads:** Multi-file, concurrent uploads with real-time progress tracking via a Google Drive-like floating upload widget.
+  - **Proxy Downloads:** Securely stream files from your cloud storage through the backend.
+  - **Public Sharing:** Generate shareable, expiring public links to securely distribute files.
+  - **Internal Sharing:** Share files with registered users with "download-only" or "view-only" constraints.
 
 - **Access Control**
-  Role-based permission settings to control who can access files and drives, ensuring privacy and compliance.
+  Role-based permission settings to manage who can access specific drives and files (Admin, Regular, Guest).
 
-- **File Management**
-
-  - Upload, download, share, and protect files with encryption at rest and secure decryption during downloads.
-  - Share files with public links that expire after a set time.
-  - Share files with specific users with either "download-only" or "view-only" permissions.
-
-- **Simple Design**
-  A user-friendly interface with a clean, responsive layout for a smooth and intuitive user experience.
+- **Modern Architecture**
+  A beautifully styled, responsive UI built with Radix UI, Tailwind CSS, and Redux Toolkit, backed by a modular Django REST framework API.
 
 ## Technology Stack
 
 ### Frontend
 
-- Vite
-- React.js
-- Tailwind CSS
+- **Framework:** React.js (via Vite)
+- **State & Data:** Redux Toolkit, TanStack Query (React Query), Axios
+- **Styling:** Tailwind CSS, Radix UI Primitives, Lucide Icons
 
 ### Backend
 
-- Django
-- SQLite 3
+- **Framework:** Django & Django REST Framework (Modular App Architecture)
+- **Database:** SQLite 3 (Default)
+- **Integrations:** Google API Client (OAuth2, Drive v3 API)
 
 ### Development Tools
 
 - Docker & Docker Compose
-- Python 12
+- Python 3.12+
 - Node.js 18+
 
 ## Prerequisites
 
 To run the project, you’ll need the following installed on your system:
 
-- **Docker**: Ensure Docker and Docker Compose are set up.
-- **Node.js**: Version 18+ (if not using Docker).
-- **Python**: Version 12 (if not using Docker).
+- **Docker**: Ensure Docker and Docker Compose are set up (Highly Recommended).
+- **Node.js**: Version 18+ (if running the frontend natively).
+- **Python**: Version 3.12+ (if running the backend natively).
 
 ## Setup and Usage
 
@@ -59,31 +62,22 @@ To run the project, you’ll need the following installed on your system:
    cd secure-share
    ```
 
-2. Run the application using Docker Compose:
+2. Configure Environment Variables:
+   Copy `.env.template` to `.env.development` and populate the required keys, especially the Google OAuth credentials (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) needed for the storage integration:
+
+   ```bash
+   cp .env.template .env.development
+   ```
+
+3. Run the application using Docker Compose:
 
    ```bash
    docker compose up --build
    ```
 
-3. The application will be available at `http://localhost:3000` (or the configured port).
+4. The frontend will be available at `http://localhost:3000` and the API at `http://localhost:8000`.
 
-### Environment Configuration
-
-- The default environment variables are defined in `.env.template`. For enhanced security:
-  1. Copy `.env.template` to `.env.development`:
-     ```bash
-     cp .env.template .env.development
-     ```
-  2. Update sensitive information like API keys, secrets, and database credentials in `.env.development`.
-  3. Modify the `docker-compose.yml` file to point the `env_file` to `.env.development`:
-     ```yaml
-     services:
-       server:
-         env_file:
-           - .env.development
-     ```
-
-### Running Without Docker
+### Running Natively (Without Docker)
 
 #### Frontend Setup
 
@@ -95,38 +89,31 @@ To run the project, you’ll need the following installed on your system:
    ```bash
    npm install
    ```
-3. Start the frontend server:
+3. Start the Vite development server:
    ```bash
    npm run dev
    ```
 
 #### Backend Setup
 
-##### Option 1: Using Docker
-
-<sub>_The Docker Compose configuration for the server supports auto-reload on save of any Python files, making it convenient for backend development._</sub>
-
-```bash
-docker compose up server
-```
-
-##### Option 2: Using Python
-
 1. Navigate to the `server` directory:
    ```bash
    cd server
    ```
-2. Install dependencies:
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-3. Start the backend server:
-
+4. Run migrations and start the server:
    ```bash
+   python manage.py migrate
    python manage.py runserver
    ```
-
-4. The backend will run on `http://localhost:8000` by default, and the frontend will be available on `http://localhost:3000`.
 
 ## License
 

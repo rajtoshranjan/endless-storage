@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Trash2, UserPlus, User, Users, Shield, Settings } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../components/layout';
 import { useAppSelector } from '../store/hooks';
 import {
   Button,
@@ -126,16 +127,10 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Drive Members
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add and manage members who can access the drive
-          </p>
-        </div>
-        <div className="flex items-center">
+      <PageHeader
+        title="Drive Members"
+        description="Add and manage members who can access the drive"
+        action={
           <Dialog
             open={isAddUserModalOpen}
             onOpenChange={setIsAddUserModalOpen}
@@ -197,8 +192,8 @@ export function UsersPage() {
               </form>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+        }
+      />
 
       <div className="h-[calc(100dvh-18rem)] w-full overflow-auto md:h-[calc(100dvh-16rem)]">
         <div className="rounded-lg border">

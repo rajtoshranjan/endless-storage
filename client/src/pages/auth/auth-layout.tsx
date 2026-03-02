@@ -10,9 +10,9 @@ export const AuthLayout = () => {
           className="flex items-center gap-2 self-center font-medium"
         >
           <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <CustomIcons.SafeFile className="size-4" />
+            <CustomIcons.Logo className="size-4" />
           </div>
-          SecureShare
+          Endless Storage
         </Link>
         <div className="flex flex-col gap-6">
           <Outlet />

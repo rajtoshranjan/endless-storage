@@ -3,6 +3,7 @@ export type FileDataFromServer = {
   id: string;
   name: string;
   size: number;
+  mime_type: string;
   created_at: string;
   modified_at: string;
 };
@@ -36,6 +37,7 @@ export type FileData = {
   id: string;
   name: string;
   size: number;
+  mimeType: string;
   createdAt: string;
   modifiedAt: string;
 };
@@ -77,4 +79,5 @@ export type ShareLinkResponse = {
 
 export type UploadFilePayload = {
   file: File;
+  onProgress?: (progress: number) => void;
 };

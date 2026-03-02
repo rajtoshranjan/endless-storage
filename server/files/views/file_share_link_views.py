@@ -1,5 +1,6 @@
-from django.db.models import Q
-from django.http import FileResponse
+import logging
+
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -9,10 +10,13 @@ from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
 
 from drive.constants import DriveMemberRole
+from storage.connectors import get_connector
 
 from ..models import FileShareLink
 from ..permissions import CanManageFileShareLinkPermission, has_manage_file_permission
 from ..serializers import FileShareLinkSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class FileShareLinkViewSet(ModelViewSet):
@@ -23,16 +27,14 @@ class FileShareLinkViewSet(ModelViewSet):
 
     def get_queryset(self):
         return FileShareLink.objects.filter(
-            Q(file__drive__owner=self.request.user)
-            | (
-                Q(file__drive__members__user=self.request.user)
-                & Q(
-                    file__drive__members__role__in=[
-                        DriveMemberRole.ADMIN.value,
-                        DriveMemberRole.REGULAR.value,
-                    ]
-                )
-            ),
+            file__drive__owner=self.request.user,
+            expires_at__gte=timezone.now(),
+        ) | FileShareLink.objects.filter(
+            file__drive__members__user=self.request.user,
+            file__drive__members__role__in=[
+                DriveMemberRole.ADMIN.value,
+                DriveMemberRole.REGULAR.value,
+            ],
             expires_at__gte=timezone.now(),
         )
 
@@ -52,10 +54,14 @@ class FileShareLinkViewSet(ModelViewSet):
             return render(request, "link_expired.html")
 
         file = share_link.file
-        decrypted_file = file.get_decrypted_file()
 
-        response = FileResponse(decrypted_file, as_attachment=True, filename=file.name)
-        response["Content-Type"] = "application/octet-stream"
-        response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+        try:
+            connector = get_connector(file.storage_account)
+            stream, mime_type = connector.stream_file(file.external_file_id)
 
-        return response
+            response = StreamingHttpResponse(stream, content_type=mime_type)
+            response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+            return response
+        except Exception as e:
+            logger.error(f"Failed to generate download URL for share link: {e}")
+            return render(request, "link_expired.html")

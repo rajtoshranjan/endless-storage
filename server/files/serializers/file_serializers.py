@@ -6,11 +6,27 @@ from ..models import File
 
 
 class FileSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(write_only=True, required=False)
+
     class Meta:
         model = File
-        fields = ["id", "name", "size", "file", "created_at", "modified_at"]
-        read_only_fields = ["id", "created_at", "modified_at", "size", "name"]
-        write_only_fields = ["file"]
+        fields = [
+            "id",
+            "name",
+            "size",
+            "mime_type",
+            "file",
+            "created_at",
+            "modified_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+            "modified_at",
+            "size",
+            "name",
+            "mime_type",
+        ]
 
     def validate(self, attrs):
         validated_data = super().validate(attrs)

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "accounts",
     "files",
     "drive",
+    "storage",
 ]
 
 MIDDLEWARE = [
@@ -166,7 +167,7 @@ TRENCH_AUTH = {
     "CONFIRM_BACKUP_CODES_REGENERATION_WITH_CODE": True,
     "ALLOW_BACKUP_CODES_REGENERATION": True,
     "ENCRYPT_BACKUP_CODES": True,
-    "APPLICATION_ISSUER_NAME": "Secure Share",
+    "APPLICATION_ISSUER_NAME": "Endless Storage",
     "MFA_METHODS": {
         "app": {
             "VERBOSE_NAME": _("app"),
@@ -208,11 +209,6 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 CORS_ALLOW_HEADERS = [*default_headers, "X-Active-Drive-Id"]
-
-
-# File upload settings
-MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Logging Configuration
 LOGGING = {

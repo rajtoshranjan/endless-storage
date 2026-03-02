@@ -24,6 +24,7 @@ import {
 } from '../../services/apis';
 import { useAppSelector } from '../../store/hooks';
 import { selectActiveDrive } from '../../store/slices';
+import { PageHeader } from '../../components/layout';
 import { FileCard } from './file-card';
 import { FilePermissionsDialog } from './file-permissions-dialog';
 import { FileShareDialog } from './file-share-dialog';
@@ -75,21 +76,7 @@ export function FileManagementPage({
 
   const handleDownload = (file: FileData) => {
     downloadFile(file.id, {
-      onSuccess: (fileBlob: Blob) => {
-        // FIXME: This is a temporary solution to download the file.
-        const url = window.URL.createObjectURL(fileBlob);
-        // Create temporary link element
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = file.name;
-
-        // Trigger download
-        document.body.appendChild(link);
-        link.click();
-        // Cleanup
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-
+      onSuccess: () => {
         toast({
           title: 'File downloaded successfully',
         });
@@ -122,19 +109,15 @@ export function FileManagementPage({
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {fileType === 'drive' ? 'My Files' : 'Shared with Me'}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {fileType === 'drive'
-              ? "View and manage your drive's files and documents"
-              : 'Access files that others have shared with you'}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={fileType === 'drive' ? 'My Files' : 'Shared with Me'}
+        description={
+          fileType === 'drive'
+            ? "View and manage your drive's files and documents"
+            : 'Access files that others have shared with you'
+        }
+      />
 
       <ScrollArea className="h-[calc(100dvh-14rem)] w-full  md:h-[calc(100dvh-16rem)]">
         <div className="w-full py-4">

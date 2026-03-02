@@ -36,10 +36,11 @@ propcache==0.2.1
 yarl==1.18.3
 nanoid==2.0.0
 
-# Cryptography
-cffi==1.17.1
-cryptography==44.0.0
-pycparser==2.22
+# Google API
+google-api-python-client==2.114.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
 
 # DB
 psycopg==3.2.4
