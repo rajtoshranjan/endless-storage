@@ -12,3 +12,8 @@ class EnvVariable(Enum):
     DB_PASSWORD = os.environ["DB_PASSWORD"]
     DB_HOST = os.environ["DB_HOST"]
     DB_PORT = os.environ["DB_PORT"]
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI = os.environ.get(
+        "GOOGLE_REDIRECT_URI", "http://localhost:5173/oauth/callback"
+    )

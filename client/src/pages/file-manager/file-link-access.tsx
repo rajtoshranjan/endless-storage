@@ -27,9 +27,9 @@ export const FileShareLinkDownload = () => {
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
       <Link to="/" className="flex items-center gap-2 self-center font-medium">
         <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <CustomIcons.SafeFile className="size-4" />
+          <CustomIcons.Logo className="size-4" />
         </div>
-        SecureShare
+        Endless Storage
       </Link>
       <Card className=" text-center">
         <CardHeader>

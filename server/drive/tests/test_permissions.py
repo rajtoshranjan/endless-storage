@@ -4,7 +4,7 @@ from rest_framework import status
 
 from drive.constants import DriveMemberRole
 from drive.models import DriveMember
-from secure_share.tests import BaseTestCase
+from endless_storage.tests import BaseTestCase
 
 
 class DrivePermissionsTestBase(BaseTestCase):

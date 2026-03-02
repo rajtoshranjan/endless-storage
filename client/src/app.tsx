@@ -14,6 +14,12 @@ import {
   UsersPage,
   FileShareLinkDownload,
 } from './pages';
+import {
+  SettingsLayout,
+  AppearanceSection,
+  StorageSection,
+  OAuthCallbackPage,
+} from './pages/settings';
 import { store } from './store';
 
 function App() {
@@ -39,8 +45,17 @@ function App() {
                   element={<FileManagementPage fileType="shared" />}
                 />
                 <Route path="users" element={<UsersPage />} />
+
+                {/* Settings with nested routes */}
+                <Route path="settings" element={<SettingsLayout />}>
+                  <Route index element={<AppearanceSection />} />
+                  <Route path="storage" element={<StorageSection />} />
+                </Route>
               </Route>
             </Route>
+
+            {/* OAuth callback route */}
+            <Route path="/oauth/callback" element={<OAuthCallbackPage />} />
 
             {/* Unprotected route */}
             <Route path="/files/:slug" element={<FileShareLinkDownload />} />

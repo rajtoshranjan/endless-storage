@@ -1,29 +1,28 @@
-import os
-from uuid import uuid4
-
-from cryptography.fernet import Fernet
 from django.conf import settings
-from django.core.files.base import ContentFile
 from django.db import models
 
-from drive.models import Drive
-from secure_share.models import BaseModel
-
-
-def get_file_path(instance, filename):
-    _, ext = os.path.splitext(filename)
-    id = instance.id or uuid4()
-    return f"files/{instance.owner.id}/{id}{ext}"
+from endless_storage.models import BaseModel
+from storage.models import StorageAccount
 
 
 class File(BaseModel):
     name = models.CharField(max_length=255)
-    file = models.FileField(upload_to=get_file_path)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="owned_files"
     )
-    drive = models.ForeignKey(Drive, on_delete=models.CASCADE, related_name="files")
-    encryption_key = models.BinaryField(editable=False, null=True)
+    drive = models.ForeignKey(
+        "drive.Drive", on_delete=models.CASCADE, related_name="files"
+    )
+    storage_account = models.ForeignKey(
+        StorageAccount,
+        on_delete=models.PROTECT,
+        related_name="files",
+        null=True,
+        blank=True,
+    )
+    external_file_id = models.CharField(max_length=255, default="")
+    mime_type = models.CharField(max_length=127, default="application/octet-stream")
+    file_size = models.BigIntegerField(default=0)
 
     class Meta:
         constraints = [
@@ -37,75 +36,4 @@ class File(BaseModel):
 
     @property
     def size(self):
-        return self.file.size
-
-    # TODO: Implement AES encryption.
-    def encrypt_file(self):
-        """
-        Encrypts the file using Fernet symmetric encryption.
-        Fernet ensures that the file cannot be manipulated or read without the key.
-        """
-        try:
-            # Generate a key for encryption
-            key = Fernet.generate_key()
-            fernet = Fernet(key)
-
-            # Read original file content in binary mode
-            self.file.seek(0)
-            file_content = self.file.read()
-
-            # Encrypt the content
-            encrypted_content = fernet.encrypt(file_content)
-
-            # Create a new file with encrypted content
-            encrypted_name = f"{self.name}.encrypted"
-            encrypted_file = ContentFile(encrypted_content)
-
-            # Save the encrypted file
-            self.file.delete(save=False)  # Delete old file
-            self.file.save(encrypted_name, encrypted_file, save=False)
-
-            # Store the encryption key
-            self.encryption_key = key
-            self.save()
-
-        except Exception as e:
-            raise ValueError(f"Encryption failed: {str(e)}")
-
-    def get_decrypted_content(self):
-        """
-        Decrypts and returns the file content.
-
-        Returns:
-            bytes: Decrypted file content
-
-        Raises:
-            ValueError: If file is not encrypted or decryption fails
-        """
-        if not self.encryption_key:
-            raise ValueError("File is not encrypted")
-
-        try:
-            # Initialize Fernet with the stored key
-            fernet = Fernet(self.encryption_key)
-
-            # Read encrypted content in binary mode
-            self.file.seek(0)
-            encrypted_content = self.file.read()
-
-            # Decrypt the content
-            decrypted_content = fernet.decrypt(encrypted_content)
-
-            # Return the decrypted content as bytes
-            return bytes(decrypted_content)
-
-        except Exception as e:
-            raise ValueError(f"Decryption failed: {str(e)}")
-
-    def get_decrypted_file(self):
-        """
-        Returns a file-like object with decrypted content.
-        Useful for streaming responses.
-        """
-        decrypted_content = self.get_decrypted_content()
-        return ContentFile(decrypted_content)
+        return self.file_size

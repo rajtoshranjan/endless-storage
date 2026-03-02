@@ -1,10 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { themeReducer, driveReducer } from './slices';
+import { themeReducer, driveReducer, uploadReducer } from './slices';
 
 export const store = configureStore({
   reducer: {
     theme: themeReducer,
     drive: driveReducer,
+    upload: uploadReducer,
   },
 });
 

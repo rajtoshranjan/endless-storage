@@ -1,6 +1,6 @@
 from rest_framework.exceptions import NotFound
 
-from secure_share.exceptions import BadRequest
+from endless_storage.exceptions import BadRequest
 
 from .models import Drive
 
