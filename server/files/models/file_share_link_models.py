@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from secure_share.models import BaseModel
+from endless_storage.models import BaseModel
 
 from ..managers import FileShareLinkManager
 from .file_models import File

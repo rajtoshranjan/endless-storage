@@ -6,12 +6,12 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
-from secure_share.env_variables import EnvVariable
+from endless_storage.env_variables import EnvVariable
 from .base import BaseStorageConnector
 
 logger = logging.getLogger(__name__)
 
-SECURE_SHARE_FOLDER_NAME = "Endless Storage"
+ENDLESS_STORAGE_FOLDER_NAME = "Endless Storage"
 
 
 class GoogleDriveConnector(BaseStorageConnector):
@@ -69,7 +69,7 @@ class GoogleDriveConnector(BaseStorageConnector):
 
         # Search for existing folder
         query = (
-            f"name = '{SECURE_SHARE_FOLDER_NAME}' "
+            f"name = '{ENDLESS_STORAGE_FOLDER_NAME}' "
             f"and mimeType = 'application/vnd.google-apps.folder' "
             f"and trashed = false"
         )
@@ -85,7 +85,7 @@ class GoogleDriveConnector(BaseStorageConnector):
 
         # Create folder
         folder_metadata = {
-            "name": SECURE_SHARE_FOLDER_NAME,
+            "name": ENDLESS_STORAGE_FOLDER_NAME,
             "mimeType": "application/vnd.google-apps.folder",
         }
         folder = service.files().create(body=folder_metadata, fields="id").execute()

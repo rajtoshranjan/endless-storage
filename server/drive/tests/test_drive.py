@@ -1,7 +1,7 @@
 from django.urls import reverse
 from rest_framework import status
 
-from secure_share.tests import BaseTestCase
+from endless_storage.tests import BaseTestCase
 
 from ..models import Drive
 

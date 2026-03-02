@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from secure_share.models import BaseModel
+from endless_storage.models import BaseModel
 
 from .file_models import File
 

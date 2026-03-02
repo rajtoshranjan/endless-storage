@@ -1,4 +1,4 @@
-from secure_share.env_variables import EnvVariable
+from endless_storage.env_variables import EnvVariable
 import logging
 
 from google_auth_oauthlib.flow import Flow

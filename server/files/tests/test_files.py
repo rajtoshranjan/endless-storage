@@ -4,7 +4,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 
-from secure_share.tests import BaseTestCase
+from endless_storage.tests import BaseTestCase
 from storage.constants import StorageProvider
 from storage.models import StorageAccount
 

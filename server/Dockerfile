@@ -18,4 +18,4 @@ RUN chmod a+x /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Use uvicorn to run the ASGI application
-CMD ["uvicorn", "secure_share.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "3"]
+CMD ["uvicorn", "endless_storage.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "3"]
