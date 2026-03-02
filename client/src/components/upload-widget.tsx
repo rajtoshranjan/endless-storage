@@ -59,7 +59,9 @@ export function UploadWidget() {
                       {job.status === 'uploading'
                         ? job.progress === 100
                           ? 'Finishing...'
-                          : `${job.progress}%`
+                          : job.totalChunks > 1
+                            ? `Chunk ${job.completedChunks}/${job.totalChunks} · ${job.progress}%`
+                            : `${job.progress}%`
                         : job.status === 'success'
                           ? 'Complete'
                           : 'Failed'}

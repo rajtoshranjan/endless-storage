@@ -8,11 +8,15 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from chunking.distributor import ChunkDistributor
+from chunking.downloader import ChunkDownloader
+from chunking.exceptions import InsufficientStorageError
+from chunking.utils import stream_as_async
 from drive.helpers import get_active_drive
 from storage.connectors import get_connector
 
-from ..helpers import select_storage_account
-from ..models import File, FilePermission
+from ..helpers import get_all_account_quotas
+from ..models import File, FileChunk, FilePermission
 from ..permissions import (
     HadManageFilePermission,
     HasDownloadFilePermission,
@@ -28,7 +32,7 @@ class FileViewSet(ModelViewSet):
     permission_classes = [HadManageFilePermission]
 
     def get_permissions(self):
-        if self.action in ("create", "init_upload", "confirm_upload"):
+        if self.action in ("init_upload", "confirm_chunk"):
             self.permission_classes = [HasUploadFilePermission]
         elif self.action == "list":
             self.permission_classes = [IsAuthenticated]
@@ -46,8 +50,14 @@ class FileViewSet(ModelViewSet):
     @action(detail=False, methods=["post"], url_path="init-upload")
     def init_upload(self, request):
         """
-        Initiate a resumable upload session.
-        Creates a pending File record and returns the upload URL + file ID.
+        Initiate an upload session.
+
+        1. Fetch quotas for all active storage accounts.
+        2. Run ChunkDistributor to compute allocation.
+        3. Create File record with total_chunks.
+        4. Create FileChunk records (status=pending).
+        5. Get a resumable upload URL for each chunk.
+        6. Return file_id + chunk plan.
         """
         file_name = request.data.get("file_name")
         file_size = int(request.data.get("file_size", 0))
@@ -59,113 +69,149 @@ class FileViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Get quotas and compute allocation
         try:
-            storage_account = select_storage_account(request.user, file_size)
+            account_quotas = get_all_account_quotas(request.user)
         except ValueError as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        drive = get_active_drive(request)
+        distributor = ChunkDistributor()
+        try:
+            allocation = distributor.compute_allocation(file_size, account_quotas)
+        except InsufficientStorageError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Create the file record now (pending upload)
+        drive = get_active_drive(request)
+        origin = request.META.get("HTTP_ORIGIN", request.META.get("HTTP_REFERER", ""))
+
+        # Create file record
         file = File.objects.create(
             name=file_name,
             owner=request.user,
             drive=drive,
-            storage_account=storage_account,
             mime_type=mime_type,
             file_size=file_size,
+            total_chunks=len(allocation),
         )
 
-        connector = get_connector(storage_account)
-        origin = request.META.get("HTTP_ORIGIN", request.META.get("HTTP_REFERER", ""))
-        upload_url = connector.create_resumable_upload(file_name, mime_type, origin=origin)
+        # Create chunk records and get upload URLs
+        chunks = []
+        for entry in allocation:
+            FileChunk.objects.create(
+                file=file,
+                chunk_index=entry["chunk_index"],
+                storage_account=entry["storage_account"],
+                chunk_size=entry["chunk_size"],
+            )
+
+            connector = get_connector(entry["storage_account"])
+            chunk_name = (
+                f"{file_name}.chunk{entry['chunk_index']}"
+                if len(allocation) > 1
+                else file_name
+            )
+            upload_url = connector.create_resumable_upload(
+                chunk_name, mime_type, origin=origin
+            )
+
+            chunks.append(
+                {
+                    "chunk_index": entry["chunk_index"],
+                    "chunk_size": entry["chunk_size"],
+                    "upload_url": upload_url,
+                }
+            )
 
         return Response(
             {
-                "upload_url": upload_url,
                 "file_id": str(file.id),
+                "chunks": chunks,
             },
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["post"], url_path="confirm-upload")
-    def confirm_upload(self, request):
+    @action(detail=True, methods=["post"], url_path="confirm-chunk")
+    def confirm_chunk(self, request, pk=None):
         """
-        Confirm a direct upload has completed.
-        Updates the pending File record with the external file ID.
-        """
-        file_id = request.data.get("file_id")
-        external_file_id = request.data.get("external_file_id")
+        Confirm a single chunk has been uploaded.
 
-        if not file_id or not external_file_id:
+        Updates the FileChunk record with the external file ID
+        and marks it as uploaded.
+        """
+        file = get_object_or_404(File, id=pk, owner=request.user)
+
+        chunk_index = request.data.get("chunk_index")
+        external_chunk_id = request.data.get("external_chunk_id")
+
+        if chunk_index is None or not external_chunk_id:
             return Response(
-                {"error": "file_id and external_file_id are required"},
+                {"error": "chunk_index and external_chunk_id are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
-            file = File.objects.get(id=file_id, owner=request.user)
-        except File.DoesNotExist:
+            chunk = FileChunk.objects.get(file=file, chunk_index=int(chunk_index))
+        except FileChunk.DoesNotExist:
             return Response(
-                {"error": "File not found"},
+                {"error": f"Chunk {chunk_index} not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Fetch actual metadata from Google Drive
-        connector = get_connector(file.storage_account)
-        metadata = connector.get_file_metadata(external_file_id)
+        # Verify the chunk exists on the drive
+        connector = get_connector(chunk.storage_account)
+        try:
+            metadata = connector.get_file_metadata(external_chunk_id)
+        except Exception as e:
+            logger.error(f"Failed to verify chunk {chunk_index}: {e}")
+            return Response(
+                {"error": "Failed to verify chunk on storage provider"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        file.external_file_id = external_file_id
-        file.mime_type = metadata.get("mimeType", file.mime_type)
-        file.file_size = int(metadata.get("size", file.file_size))
-        file.save(update_fields=["external_file_id", "mime_type", "file_size"])
+        chunk.external_chunk_id = external_chunk_id
+        chunk.chunk_size = int(metadata.get("size", chunk.chunk_size))
+        chunk.upload_status = "uploaded"
+        chunk.save(update_fields=["external_chunk_id", "chunk_size", "upload_status"])
 
-        serializer = FileSerializer(file, context={"request": request})
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Check if all chunks are uploaded
+        total = file.total_chunks
+        uploaded = file.chunks.filter(upload_status="uploaded").count()
+        all_uploaded = uploaded == total
 
-    def perform_create(self, serializer):
-        """Fallback server-proxied upload (kept for compatibility)."""
-        uploaded_file = serializer.validated_data.pop("file", None)
-        if not uploaded_file:
-            raise ValueError("No file provided for upload")
+        response_data = {
+            "chunk_index": chunk.chunk_index,
+            "status": chunk.upload_status,
+            "all_chunks_uploaded": all_uploaded,
+        }
 
-        storage_account = select_storage_account(
-            self.request.user, uploaded_file.size
-        )
-        connector = get_connector(storage_account)
+        if all_uploaded:
+            serializer = FileSerializer(file, context={"request": request})
+            response_data["file"] = serializer.data
 
-        mime_type = uploaded_file.content_type or "application/octet-stream"
-
-        external_file_id = connector.upload_file(
-            file_name=uploaded_file.name,
-            file_content=uploaded_file,
-            mime_type=mime_type,
-        )
-
-        serializer.save(
-            owner=self.request.user,
-            storage_account=storage_account,
-            external_file_id=external_file_id,
-            mime_type=mime_type,
-            file_size=uploaded_file.size,
-        )
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
-        """Delete the file from cloud storage and then from the database."""
-        try:
-            connector = get_connector(instance.storage_account)
-            connector.delete_file(instance.external_file_id)
-        except Exception as e:
-            logger.warning(
-                f"Failed to delete file from cloud storage: {e}. "
-                f"Proceeding with database deletion."
-            )
+        """Delete all chunks from cloud storage, then delete the file record."""
+        for chunk in instance.chunks.filter(upload_status="uploaded"):
+            try:
+                connector = get_connector(chunk.storage_account)
+                connector.delete_file(chunk.external_chunk_id)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to delete chunk {chunk.chunk_index} "
+                    f"from {chunk.storage_account}: {e}"
+                )
         instance.delete()
 
-    @action(detail=True, methods=["get"], permission_classes=[HasDownloadFilePermission])
+    @action(
+        detail=True, methods=["get"], permission_classes=[HasDownloadFilePermission]
+    )
     def generate_download_token(self, request, pk=None):
         """Generates a short-lived token for direct browser downloads."""
         file = get_object_or_404(File, id=pk)
@@ -178,34 +224,51 @@ class FileViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
+        """
+        Stream a file's content to the client.
+
+        For all files, iterates through chunks in order and streams
+        their content. Works identically for single-chunk and multi-chunk files.
+        """
         token = request.query_params.get("token")
-        
+
         if token:
             from django.core import signing
 
             try:
-                # Token valid for 60 seconds
                 data = signing.loads(token, max_age=60)
                 if str(data.get("file_id")) != str(pk):
-                    return Response({"error": "Invalid token payload"}, status=status.HTTP_403_FORBIDDEN)
+                    return Response(
+                        {"error": "Invalid token payload"},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
             except signing.SignatureExpired:
-                return Response({"error": "Download token expired"}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": "Download token expired"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             except signing.BadSignature:
-                return Response({"error": "Invalid download token"}, status=status.HTTP_403_FORBIDDEN)
-            
+                return Response(
+                    {"error": "Invalid download token"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             file = get_object_or_404(File, id=pk)
         else:
             file = get_object_or_404(File, id=pk)
-            # Fallback to standard token auth if using Axios
             if not request.user.is_authenticated:
                 return Response(status=status.HTTP_401_UNAUTHORIZED)
             self.check_object_permissions(request, file)
 
-        connector = get_connector(file.storage_account)
-        stream, mime_type = connector.stream_file(file.external_file_id)
+        downloader = ChunkDownloader()
+        sync_stream = downloader.stream_chunks(file)
 
-        response = StreamingHttpResponse(stream, content_type=mime_type)
+        response = StreamingHttpResponse(
+            stream_as_async(sync_stream), content_type=file.mime_type
+        )
         response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+        if file.file_size:
+            response["Content-Length"] = file.file_size
         return response
 
     @action(

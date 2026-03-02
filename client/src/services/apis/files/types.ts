@@ -4,6 +4,7 @@ export type FileDataFromServer = {
   name: string;
   size: number;
   mime_type: string;
+  total_chunks: number;
   created_at: string;
   modified_at: string;
 };
@@ -38,6 +39,7 @@ export type FileData = {
   name: string;
   size: number;
   mimeType: string;
+  totalChunks: number;
   createdAt: string;
   modifiedAt: string;
 };
@@ -80,4 +82,24 @@ export type ShareLinkResponse = {
 export type UploadFilePayload = {
   file: File;
   onProgress?: (progress: number) => void;
+  onChunkProgress?: (completedChunks: number, totalChunks: number) => void;
+};
+
+// Chunk types
+export type ChunkPlan = {
+  chunk_index: number;
+  chunk_size: number;
+  upload_url: string;
+};
+
+export type InitUploadResponse = {
+  file_id: string;
+  chunks: ChunkPlan[];
+};
+
+export type ConfirmChunkResponse = {
+  chunk_index: number;
+  status: string;
+  all_chunks_uploaded: boolean;
+  file?: FileDataFromServer;
 };

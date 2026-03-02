@@ -9,8 +9,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
 
+from chunking.downloader import ChunkDownloader
+from chunking.utils import stream_as_async
 from drive.constants import DriveMemberRole
-from storage.connectors import get_connector
 
 from ..models import FileShareLink
 from ..permissions import CanManageFileShareLinkPermission, has_manage_file_permission
@@ -56,11 +57,15 @@ class FileShareLinkViewSet(ModelViewSet):
         file = share_link.file
 
         try:
-            connector = get_connector(file.storage_account)
-            stream, mime_type = connector.stream_file(file.external_file_id)
+            downloader = ChunkDownloader()
+            sync_stream = downloader.stream_chunks(file)
 
-            response = StreamingHttpResponse(stream, content_type=mime_type)
+            response = StreamingHttpResponse(
+                stream_as_async(sync_stream), content_type=file.mime_type
+            )
             response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+            if file.file_size:
+                response["Content-Length"] = file.file_size
             return response
         except Exception as e:
             logger.error(f"Failed to generate download URL for share link: {e}")

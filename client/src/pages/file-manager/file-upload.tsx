@@ -7,6 +7,7 @@ import { useAppDispatch } from '../../store/hooks';
 import {
   addUploadJob,
   updateUploadProgress,
+  updateChunkProgress,
   setUploadStatus,
 } from '../../store/slices';
 
@@ -31,14 +32,21 @@ export const FileUpload = ({
       // Create a more unique ID to avoid collisions on quick multi-selects
       const jobId = `${file.name}-${Date.now()}-${index}`;
 
-      // Add job to Redux
-      dispatch(addUploadJob({ id: jobId, fileName: file.name }));
+      // Add job to Redux (totalChunks starts at 1, updated via onChunkProgress)
+      dispatch(
+        addUploadJob({ id: jobId, fileName: file.name, totalChunks: 1 }),
+      );
 
       try {
         await uploadFileAsync({
           file,
           onProgress: (progress) => {
             dispatch(updateUploadProgress({ id: jobId, progress }));
+          },
+          onChunkProgress: (completedChunks, totalChunks) => {
+            dispatch(
+              updateChunkProgress({ id: jobId, completedChunks, totalChunks }),
+            );
           },
         });
 

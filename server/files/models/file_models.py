@@ -2,7 +2,6 @@ from django.conf import settings
 from django.db import models
 
 from endless_storage.models import BaseModel
-from storage.models import StorageAccount
 
 
 class File(BaseModel):
@@ -13,16 +12,9 @@ class File(BaseModel):
     drive = models.ForeignKey(
         "drive.Drive", on_delete=models.CASCADE, related_name="files"
     )
-    storage_account = models.ForeignKey(
-        StorageAccount,
-        on_delete=models.PROTECT,
-        related_name="files",
-        null=True,
-        blank=True,
-    )
-    external_file_id = models.CharField(max_length=255, default="")
     mime_type = models.CharField(max_length=127, default="application/octet-stream")
     file_size = models.BigIntegerField(default=0)
+    total_chunks = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints = [

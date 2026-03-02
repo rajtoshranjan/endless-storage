@@ -20,21 +20,21 @@ class BaseStorageConnector(ABC):
         Returns:
             The external file ID in the storage provider.
         """
+
     @abstractmethod
     def create_resumable_upload(
-        self, file_name: str, mime_type: str, file_size: int, origin: str
-    ) -> dict:
+        self, file_name: str, mime_type: str, origin: str = ""
+    ) -> str:
         """
         Create a resumable upload session.
 
         Args:
             file_name: Name of the file.
             mime_type: MIME type of the file.
-            file_size: Total size of the file in bytes.
             origin: The origin domain for CORS.
 
         Returns:
-            Dict containing the 'upload_url'.
+            The resumable upload URL.
         """
         pass
 
