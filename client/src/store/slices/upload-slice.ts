@@ -5,6 +5,8 @@ export type UploadJob = {
   fileName: string;
   progress: number;
   status: 'uploading' | 'success' | 'error';
+  totalChunks: number;
+  completedChunks: number;
 };
 
 type UploadState = {
@@ -23,12 +25,15 @@ export const uploadSlice = createSlice({
   reducers: {
     addUploadJob: (
       state,
-      action: PayloadAction<Omit<UploadJob, 'progress' | 'status'>>,
+      action: PayloadAction<
+        Omit<UploadJob, 'progress' | 'status' | 'completedChunks'>
+      >,
     ) => {
       state.jobs[action.payload.id] = {
         ...action.payload,
         progress: 0,
         status: 'uploading',
+        completedChunks: 0,
       };
       state.isWidgetVisible = true;
     },
@@ -38,6 +43,20 @@ export const uploadSlice = createSlice({
     ) => {
       if (state.jobs[action.payload.id]) {
         state.jobs[action.payload.id].progress = action.payload.progress;
+      }
+    },
+    updateChunkProgress: (
+      state,
+      action: PayloadAction<{
+        id: string;
+        completedChunks: number;
+        totalChunks: number;
+      }>,
+    ) => {
+      if (state.jobs[action.payload.id]) {
+        state.jobs[action.payload.id].completedChunks =
+          action.payload.completedChunks;
+        state.jobs[action.payload.id].totalChunks = action.payload.totalChunks;
       }
     },
     setUploadStatus: (
@@ -69,6 +88,7 @@ export const uploadSlice = createSlice({
 export const {
   addUploadJob,
   updateUploadProgress,
+  updateChunkProgress,
   setUploadStatus,
   removeUploadJob,
   toggleWidgetVisibility,

@@ -181,6 +181,8 @@ class GoogleDriveConnector(BaseStorageConnector):
         Stream a file from Google Drive in chunks.
         Returns (chunk_iterator, mime_type).
         """
+        import requests as req
+
         service = self._get_service()
 
         # Get mime type
@@ -189,37 +191,27 @@ class GoogleDriveConnector(BaseStorageConnector):
         )
         mime_type = file_metadata.get("mimeType", "application/octet-stream")
 
-        async def chunk_generator():
-            import aiohttp
+        download_url = (
+            f"https://www.googleapis.com/drive/v3/files/{external_file_id}?alt=media"
+        )
+        headers = {"Authorization": f"Bearer {self.storage_account.access_token}"}
 
-            download_url = f"https://www.googleapis.com/drive/v3/files/{external_file_id}?alt=media"
-            headers = {"Authorization": f"Bearer {self.storage_account.access_token}"}
+        response = req.get(download_url, headers=headers, stream=True)
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(download_url, headers=headers) as response:
-                    # If token is expired, refresh and try again
-                    if response.status == 401:
-                        # refresh_credentials uses synchronous code, run it blockingly or just call it
-                        self.refresh_credentials()
-                        headers["Authorization"] = (
-                            f"Bearer {self.storage_account.access_token}"
-                        )
+        # If token is expired, refresh and retry
+        if response.status_code == 401:
+            response.close()
+            self.refresh_credentials()
+            headers["Authorization"] = f"Bearer {self.storage_account.access_token}"
+            response = req.get(download_url, headers=headers, stream=True)
 
-                        # Try again with new token
-                        async with session.get(
-                            download_url, headers=headers
-                        ) as retried_response:
-                            retried_response.raise_for_status()
-                            async for chunk in retried_response.content.iter_chunked(
-                                1024 * 1024
-                            ):
-                                if chunk:
-                                    yield chunk
-                    else:
-                        response.raise_for_status()
-                        async for chunk in response.content.iter_chunked(1024 * 1024):
-                            if chunk:
-                                yield chunk
+        response.raise_for_status()
+
+        def chunk_generator():
+            with response:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        yield chunk
 
         return chunk_generator(), mime_type
 

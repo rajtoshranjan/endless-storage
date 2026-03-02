@@ -4,8 +4,10 @@ import { ApiResponse } from '../types';
 import api from '../setup';
 import { apiDataResponseMapper } from '../utils';
 import {
+  ConfirmChunkResponse,
   FileData,
   FileDataFromServer,
+  InitUploadResponse,
   SharedFileData,
   SharedFileDataFromServer,
   UploadFilePayload,
@@ -44,48 +46,107 @@ export const getSharedFilesRequest = async (): Promise<
 export const uploadFileRequest = async (
   payload: UploadFilePayload,
 ): Promise<ApiResponse<FileData>> => {
-  // Step 1: Init upload — server creates pending File, returns upload URL
+  const MAX_PARALLEL = 6;
+
+  // Step 1: Init upload — server computes chunk allocation and returns upload URLs
   const initResponse = await api.post<
-    { upload_url: string; file_id: string },
-    ApiResponse<{ upload_url: string; file_id: string }>
+    InitUploadResponse,
+    ApiResponse<InitUploadResponse>
   >('/files/init-upload/', {
     file_name: payload.file.name,
     file_size: payload.file.size,
     mime_type: payload.file.type || 'application/octet-stream',
   });
 
-  const { upload_url: uploadUrl, file_id: fileId } = initResponse.data;
+  const { file_id: fileId, chunks } = initResponse.data;
+  const totalChunks = chunks.length;
 
-  // Step 2: Upload file directly to Google Drive
-  const uploadResponse = await axios.put(uploadUrl, payload.file, {
-    headers: {
-      'Content-Type': payload.file.type || 'application/octet-stream',
-    },
-    onUploadProgress: (progressEvent) => {
-      if (payload.onProgress && progressEvent.total) {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total,
-        );
-        payload.onProgress(percentCompleted);
-      }
-    },
-  });
+  // Pre-compute byte offsets for each chunk
+  const chunkOffsets: number[] = [];
+  let runningOffset = 0;
+  for (const chunk of chunks) {
+    chunkOffsets.push(runningOffset);
+    runningOffset += chunk.chunk_size;
+  }
 
-  const externalFileId = uploadResponse.data.id;
+  // Track per-chunk progress for overall calculation
+  const chunkProgressMap: Record<number, number> = {};
+  let completedChunks = 0;
 
-  // Step 3: Confirm upload — server updates the File record
-  const confirmResponse = await api.post<
+  const uploadChunk = async (index: number) => {
+    const chunk = chunks[index];
+    const offset = chunkOffsets[index];
+    const blob = payload.file.slice(offset, offset + chunk.chunk_size);
+
+    // Upload chunk directly to cloud storage
+    const uploadResponse = await axios.put(chunk.upload_url, blob, {
+      headers: {
+        'Content-Type': payload.file.type || 'application/octet-stream',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (payload.onProgress && progressEvent.total) {
+          chunkProgressMap[index] = progressEvent.loaded / progressEvent.total;
+
+          // Aggregate progress across all chunks (weighted by chunk size)
+          const totalSize = payload.file.size;
+          let weightedProgress = 0;
+          for (let j = 0; j < totalChunks; j++) {
+            const fraction = chunks[j].chunk_size / totalSize;
+            weightedProgress += (chunkProgressMap[j] ?? 0) * fraction;
+          }
+          payload.onProgress(Math.min(Math.round(weightedProgress * 100), 99));
+        }
+      },
+    });
+
+    const externalChunkId = uploadResponse.data.id;
+
+    // Confirm chunk with server
+    await api.post<ConfirmChunkResponse, ApiResponse<ConfirmChunkResponse>>(
+      `/files/${fileId}/confirm-chunk/`,
+      {
+        chunk_index: chunk.chunk_index,
+        external_chunk_id: externalChunkId,
+      },
+    );
+
+    completedChunks++;
+    if (payload.onChunkProgress) {
+      payload.onChunkProgress(completedChunks, totalChunks);
+    }
+  };
+
+  // Step 2: Upload chunks with up to MAX_PARALLEL concurrent uploads
+  const active = new Set<Promise<void>>();
+
+  for (let i = 0; i < chunks.length; i++) {
+    const p: Promise<void> = uploadChunk(i).finally(() => active.delete(p));
+    active.add(p);
+
+    // When we hit the concurrency limit, wait for one to finish
+    if (active.size >= MAX_PARALLEL) {
+      await Promise.race(active);
+    }
+  }
+
+  // Wait for remaining uploads
+  await Promise.all(active);
+
+  // Final progress
+  if (payload.onProgress) {
+    payload.onProgress(100);
+  }
+
+  // Fetch final file data
+  const fileResponse = await api.get<
     FileDataFromServer,
     ApiResponse<FileDataFromServer>
-  >('/files/confirm-upload/', {
-    file_id: fileId,
-    external_file_id: externalFileId,
-  });
+  >(`/files/${fileId}/`);
 
   return {
-    ...confirmResponse,
+    ...initResponse,
     data: apiDataResponseMapper<FileDataFromServer, FileData>(
-      confirmResponse.data,
+      fileResponse.data,
     ),
   };
 };
