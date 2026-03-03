@@ -237,7 +237,7 @@ export function StorageSection() {
               </Button>
             </div>
           ) : (
-            <ScrollArea className="h-[calc(100dvh-32rem)] w-full md:h-[calc(100dvh-26rem)]">
+            <ScrollArea className="h-[calc(100dvh-32rem)] w-full md:h-[calc(100dvh-27rem)]">
               {storageAccounts.map((account) => {
                 const meta = PROVIDER_META[account.provider] || {
                   label: account.provider,
