@@ -36,7 +36,6 @@ class BaseStorageConnector(ABC):
         Returns:
             The resumable upload URL.
         """
-        pass
 
     @abstractmethod
     def get_file_metadata(self, external_file_id: str) -> dict:
@@ -49,7 +48,6 @@ class BaseStorageConnector(ABC):
         Returns:
             Dict containing metadata (e.g., 'id', 'name', 'mimeType', 'size').
         """
-        pass
 
     @abstractmethod
     def stream_file(self, external_file_id: str):
@@ -62,7 +60,6 @@ class BaseStorageConnector(ABC):
         Returns:
             Tuple of (generator_yielding_chunks, mime_type).
         """
-        pass
 
     @abstractmethod
     def delete_file(self, external_file_id: str) -> None:
@@ -72,7 +69,6 @@ class BaseStorageConnector(ABC):
         Args:
             external_file_id: The file's ID in the storage provider.
         """
-        pass
 
     @abstractmethod
     def refresh_credentials(self) -> None:
@@ -80,7 +76,6 @@ class BaseStorageConnector(ABC):
         Refresh the OAuth credentials if they are expired.
         Updates the storage_account model with new tokens.
         """
-        pass
 
     @abstractmethod
     def get_storage_quota(self) -> dict:
@@ -90,4 +85,3 @@ class BaseStorageConnector(ABC):
         Returns:
             Dict with 'limit', 'usage', and 'remaining' in bytes.
         """
-        pass

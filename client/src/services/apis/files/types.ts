@@ -103,3 +103,17 @@ export type ConfirmChunkResponse = {
   all_chunks_uploaded: boolean;
   file?: FileDataFromServer;
 };
+
+export type DownloadChunkPlan = {
+  chunk_index: number;
+  chunk_size: number;
+  download_url: string;
+  access_token: string;
+};
+
+export type DownloadPlanResponse = {
+  file_name: string;
+  file_size: number;
+  mime_type: string;
+  chunks: DownloadChunkPlan[];
+};

@@ -1,4 +1,3 @@
-from endless_storage.env_variables import EnvVariable
 import logging
 
 from google_auth_oauthlib.flow import Flow
@@ -8,8 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from endless_storage.env_variables import EnvVariable
+
 from .constants import StorageProvider
-from .connectors.google_drive import GoogleDriveConnector
 from .models import StorageAccount
 from .serializers import StorageAccountSerializer
 
@@ -92,8 +92,8 @@ class StorageAccountViewSet(ModelViewSet):
             credentials = flow.credentials
 
             # Get user's email from Google
-            from google.oauth2 import id_token
             from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token
 
             id_info = id_token.verify_oauth2_token(
                 credentials.id_token,

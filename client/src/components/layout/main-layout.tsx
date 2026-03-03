@@ -4,7 +4,7 @@ import { useAppSelector } from '../../store/hooks';
 import { selectActiveDrive } from '../../store/slices';
 import { CustomIcons } from '../icons';
 import { Button } from '../ui/button';
-import { UploadWidget } from '../upload-widget';
+import { TransferWidget } from '../transfer-widget';
 import { cn } from '../../lib/utils';
 import { SelectDrive } from './select-drive';
 import { UserNav } from './user-nav';
@@ -95,7 +95,7 @@ export function Layout() {
       </main>
 
       {/* Global Overlays */}
-      <UploadWidget />
+      <TransferWidget />
     </div>
   );
 }

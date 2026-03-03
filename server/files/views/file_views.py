@@ -1,6 +1,5 @@
 import logging
 
-from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
@@ -9,9 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from chunking.distributor import ChunkDistributor
-from chunking.downloader import ChunkDownloader
 from chunking.exceptions import InsufficientStorageError
-from chunking.utils import stream_as_async
 from drive.helpers import get_active_drive
 from storage.connectors import get_connector
 
@@ -36,10 +33,6 @@ class FileViewSet(ModelViewSet):
             self.permission_classes = [HasUploadFilePermission]
         elif self.action == "list":
             self.permission_classes = [IsAuthenticated]
-        elif self.action == "download" and "token" in self.request.query_params:
-            from rest_framework.permissions import AllowAny
-
-            self.permission_classes = [AllowAny]
 
         return super().get_permissions()
 
@@ -210,66 +203,65 @@ class FileViewSet(ModelViewSet):
         instance.delete()
 
     @action(
-        detail=True, methods=["get"], permission_classes=[HasDownloadFilePermission]
+        detail=True,
+        methods=["get"],
+        permission_classes=[HasDownloadFilePermission],
+        url_path="download-plan",
     )
-    def generate_download_token(self, request, pk=None):
-        """Generates a short-lived token for direct browser downloads."""
+    def download_plan(self, request, pk=None):
+        """
+        Return per-chunk direct download URLs and access tokens.
+
+        The client uses these to download chunks directly from the
+        cloud storage provider without proxying through our server.
+        Access tokens are short-lived (~1 hour) and auto-refreshed.
+        """
         file = get_object_or_404(File, id=pk)
         self.check_object_permissions(request, file)
 
-        from django.core import signing
-
-        token = signing.dumps({"file_id": str(file.id)})
-        return Response({"token": token})
-
-    @action(detail=True, methods=["get"])
-    def download(self, request, pk=None):
-        """
-        Stream a file's content to the client.
-
-        For all files, iterates through chunks in order and streams
-        their content. Works identically for single-chunk and multi-chunk files.
-        """
-        token = request.query_params.get("token")
-
-        if token:
-            from django.core import signing
-
-            try:
-                data = signing.loads(token, max_age=60)
-                if str(data.get("file_id")) != str(pk):
-                    return Response(
-                        {"error": "Invalid token payload"},
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-            except signing.SignatureExpired:
-                return Response(
-                    {"error": "Download token expired"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-            except signing.BadSignature:
-                return Response(
-                    {"error": "Invalid download token"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            file = get_object_or_404(File, id=pk)
-        else:
-            file = get_object_or_404(File, id=pk)
-            if not request.user.is_authenticated:
-                return Response(status=status.HTTP_401_UNAUTHORIZED)
-            self.check_object_permissions(request, file)
-
-        downloader = ChunkDownloader()
-        sync_stream = downloader.stream_chunks(file)
-
-        response = StreamingHttpResponse(
-            stream_as_async(sync_stream), content_type=file.mime_type
+        chunks = (
+            file.chunks.filter(upload_status="uploaded")
+            .select_related("storage_account")
+            .order_by("chunk_index")
         )
-        response["Content-Disposition"] = f'attachment; filename="{file.name}"'
-        if file.file_size:
-            response["Content-Length"] = file.file_size
-        return response
+
+        # Refresh access tokens for each unique storage account
+        account_tokens = {}
+        for chunk in chunks:
+            account = chunk.storage_account
+            if account.id not in account_tokens:
+                try:
+                    connector = get_connector(account)
+                    connector.refresh_credentials()
+                    account.refresh_from_db(fields=["access_token"])
+                except Exception:
+                    pass  # Token may still be valid
+                account_tokens[account.id] = account.access_token
+
+        chunk_data = []
+        for chunk in chunks:
+            download_url = (
+                f"https://www.googleapis.com/drive/v3/files/"
+                f"{chunk.external_chunk_id}?alt=media"
+            )
+            chunk_data.append(
+                {
+                    "chunk_index": chunk.chunk_index,
+                    "chunk_size": chunk.chunk_size,
+                    "download_url": download_url,
+                    "access_token": account_tokens[chunk.storage_account_id],
+                }
+            )
+
+        return Response(
+            {
+                "file_name": file.name,
+                "file_size": file.file_size,
+                "mime_type": file.mime_type,
+                "chunks": chunk_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @action(
         detail=False,

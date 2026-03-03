@@ -10,3 +10,7 @@
 
 # DB.
 postgres-data/
+
+# Virtual environment
+virtual-env/
+venv/

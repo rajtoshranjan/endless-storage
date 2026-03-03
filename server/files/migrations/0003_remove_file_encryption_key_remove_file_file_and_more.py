@@ -7,37 +7,43 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('files', '0002_file_drive'),
-        ('storage', '0001_initial'),
+        ("files", "0002_file_drive"),
+        ("storage", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='file',
-            name='encryption_key',
+            model_name="file",
+            name="encryption_key",
         ),
         migrations.RemoveField(
-            model_name='file',
-            name='file',
+            model_name="file",
+            name="file",
         ),
         migrations.AddField(
-            model_name='file',
-            name='external_file_id',
-            field=models.CharField(default='', max_length=255),
+            model_name="file",
+            name="external_file_id",
+            field=models.CharField(default="", max_length=255),
         ),
         migrations.AddField(
-            model_name='file',
-            name='file_size',
+            model_name="file",
+            name="file_size",
             field=models.BigIntegerField(default=0),
         ),
         migrations.AddField(
-            model_name='file',
-            name='mime_type',
-            field=models.CharField(default='application/octet-stream', max_length=127),
+            model_name="file",
+            name="mime_type",
+            field=models.CharField(default="application/octet-stream", max_length=127),
         ),
         migrations.AddField(
-            model_name='file',
-            name='storage_account',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='files', to='storage.storageaccount'),
+            model_name="file",
+            name="storage_account",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="files",
+                to="storage.storageaccount",
+            ),
         ),
     ]

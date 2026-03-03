@@ -6,7 +6,9 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+
 from endless_storage.env_variables import EnvVariable
+
 from .base import BaseStorageConnector
 
 logger = logging.getLogger(__name__)

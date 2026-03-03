@@ -2,7 +2,6 @@ import logging
 
 from .exceptions import InsufficientStorageError
 
-
 logger = logging.getLogger(__name__)
 
 

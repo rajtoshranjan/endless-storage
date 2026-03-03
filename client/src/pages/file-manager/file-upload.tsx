@@ -5,10 +5,10 @@ import { toast } from '../../hooks';
 import { cn } from '../../lib/utils';
 import { useAppDispatch } from '../../store/hooks';
 import {
-  addUploadJob,
-  updateUploadProgress,
-  updateChunkProgress,
-  setUploadStatus,
+  addTransferJob,
+  setTransferStatus,
+  updateTransferChunkProgress,
+  updateTransferProgress,
 } from '../../store/slices';
 
 export type FileUploadProps = {
@@ -34,26 +34,35 @@ export const FileUpload = ({
 
       // Add job to Redux (totalChunks starts at 1, updated via onChunkProgress)
       dispatch(
-        addUploadJob({ id: jobId, fileName: file.name, totalChunks: 1 }),
+        addTransferJob({
+          id: jobId,
+          fileName: file.name,
+          totalChunks: 1,
+          type: 'upload',
+        }),
       );
 
       try {
         await uploadFileAsync({
           file,
           onProgress: (progress) => {
-            dispatch(updateUploadProgress({ id: jobId, progress }));
+            dispatch(updateTransferProgress({ id: jobId, progress }));
           },
           onChunkProgress: (completedChunks, totalChunks) => {
             dispatch(
-              updateChunkProgress({ id: jobId, completedChunks, totalChunks }),
+              updateTransferChunkProgress({
+                id: jobId,
+                completedChunks,
+                totalChunks,
+              }),
             );
           },
         });
 
-        dispatch(setUploadStatus({ id: jobId, status: 'success' }));
+        dispatch(setTransferStatus({ id: jobId, status: 'success' }));
         onFileUploadSuccess();
       } catch (error: any) {
-        dispatch(setUploadStatus({ id: jobId, status: 'error' }));
+        dispatch(setTransferStatus({ id: jobId, status: 'error' }));
         if (error.meta?.status_code === 409) {
           toast({
             title: 'File already exists',
