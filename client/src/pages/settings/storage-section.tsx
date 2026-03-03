@@ -157,7 +157,7 @@ export function StorageSection() {
           onClick={handleConnectGoogleDrive}
           disabled={isConnecting}
           size="sm"
-          className="gap-2 rounded-full px-4"
+          className="gap-2"
         >
           {isConnecting ? (
             <div className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />

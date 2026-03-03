@@ -136,8 +136,8 @@ export function UsersPage() {
             onOpenChange={setIsAddUserModalOpen}
           >
             <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 size-4" />
+              <Button size="sm">
+                <UserPlus className="size-4" />
                 Add Member
               </Button>
             </DialogTrigger>
