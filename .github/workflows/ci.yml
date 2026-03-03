@@ -25,10 +25,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build and Run tests via Docker
-        working-directory: ./server
         run: |
-          docker build -t secure-share-server .
-          docker run --rm secure-share-server python manage.py test
+          cp .env.template .env.development
+          docker compose up -d db
+          docker compose run --rm server python manage.py test
 
   client-lint:
     runs-on: ubuntu-latest
