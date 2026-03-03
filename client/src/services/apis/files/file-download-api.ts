@@ -103,7 +103,7 @@ export const downloadFileRequest = async ({
     }
   }
 
-  // Strategy 2: Parallel blob download (fallback).
+  // Strategy 2: Parallel streaming download (fallback for Firefox/Safari).
   const chunkBlobs: (Blob | null)[] = new Array(chunks.length).fill(null);
   const active = new Set<Promise<void>>();
   let completedChunksCount = 0;
@@ -116,13 +116,29 @@ export const downloadFileRequest = async ({
           `Failed to download chunk ${index}: ${response.status}`,
         );
       }
-      chunkBlobs[index] = await response.blob();
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error(`No response body for chunk ${index}`);
+      }
+
+      // Stream the chunk and collect bytes for later Blob assembly.
+      const parts: Uint8Array[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        loadedBytes += value.length;
+        if (onProgress && file_size) {
+          onProgress(Math.round((loadedBytes * 100) / file_size));
+        }
+      }
+
+      chunkBlobs[index] = new Blob(parts as BlobPart[]);
       completedChunksCount++;
       if (onChunkProgress) {
         onChunkProgress(completedChunksCount, chunks.length);
-      }
-      if (onProgress) {
-        onProgress(Math.round((completedChunksCount * 100) / chunks.length));
       }
     };
 

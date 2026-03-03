@@ -111,9 +111,6 @@ export function FileManagementPage({
       {
         onSuccess: () => {
           dispatch(setTransferStatus({ id: jobId, status: 'success' }));
-          toast({
-            title: 'File downloaded successfully',
-          });
         },
         onError: (error) => {
           dispatch(setTransferStatus({ id: jobId, status: 'error' }));
