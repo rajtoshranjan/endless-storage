@@ -103,8 +103,8 @@ export const handleRefreshToken = async () => {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: (_, error) => {
-        if (error.meta.type === ApiErrorType.TokenError) {
+      retry: (failureCount, error: any) => {
+        if (error?.meta?.type === ApiErrorType.TokenError) {
           handleRefreshToken();
           return true;
         }
@@ -115,8 +115,8 @@ export const queryClient = new QueryClient({
       gcTime: 0,
     },
     mutations: {
-      retry: (_, error) => {
-        if (error.meta.type === ApiErrorType.TokenError) {
+      retry: (failureCount, error: any) => {
+        if (error?.meta?.type === ApiErrorType.TokenError) {
           handleRefreshToken();
           return true;
         }

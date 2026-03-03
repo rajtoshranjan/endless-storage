@@ -55,24 +55,60 @@ export function TransferWidget() {
         </Button>
       </CardHeader>
       <CardContent className="p-0">
+        {jobs.some(
+          (j) => j.type === 'download' && j.status === 'downloading',
+        ) && (
+          <div className="bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-600 dark:text-amber-500">
+            ⚠️ <strong>Do not close this tab.</strong> Active downloads will be
+            canceled.
+          </div>
+        )}
         <ScrollArea className="max-h-80">
           <div className="flex flex-col gap-1 p-2">
             {jobs.map((job) => {
+              const isUpload = job.type === 'upload';
+              const isDownload = job.type === 'download';
               const isActive =
                 job.status === 'uploading' || job.status === 'downloading';
+
+              // Colors
+              const iconColor = isDownload
+                ? 'text-blue-500'
+                : 'text-emerald-500';
+              const bgColor = isDownload
+                ? 'bg-blue-500/10'
+                : 'bg-emerald-500/10';
+
+              // Status text
+              let statusText = '';
+              if (isActive) {
+                if (job.progress === 100) statusText = 'Finishing...';
+                else if (job.totalChunks > 1) {
+                  const action = isDownload ? 'Downloading' : 'Uploading';
+                  statusText = `${action} chunk ${job.completedChunks}/${job.totalChunks} · ${job.progress}%`;
+                } else {
+                  const action = isDownload ? 'Downloading' : 'Uploading';
+                  statusText = `${action}... ${job.progress}%`;
+                }
+              } else {
+                statusText = job.status === 'success' ? 'Complete' : 'Failed';
+              }
+
               return (
                 <div
                   key={job.id}
                   className="flex flex-col gap-2 rounded-md p-2 hover:bg-accent/40"
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded bg-primary/10">
-                      {job.type === 'upload' ? (
-                        <ArrowUpToLine className="size-4 text-primary" />
-                      ) : job.type === 'download' ? (
-                        <ArrowDownToLine className="size-4 text-primary" />
+                    <div
+                      className={`flex size-8 shrink-0 items-center justify-center rounded ${bgColor}`}
+                    >
+                      {isUpload ? (
+                        <ArrowUpToLine className={`size-4 ${iconColor}`} />
+                      ) : isDownload ? (
+                        <ArrowDownToLine className={`size-4 ${iconColor}`} />
                       ) : (
-                        <File className="size-4 text-primary" />
+                        <File className={`size-4 ${iconColor}`} />
                       )}
                     </div>
                     <div className="w-0 flex-1 overflow-hidden">
@@ -81,21 +117,15 @@ export function TransferWidget() {
                           ? `${job.fileName.slice(0, 15)}…${job.fileName.slice(-12)}`
                           : job.fileName}
                       </p>
-                      <p className="text-xs capitalize text-muted-foreground">
-                        {isActive
-                          ? job.progress === 100
-                            ? 'Finishing...'
-                            : job.totalChunks > 1
-                              ? `Chunk ${job.completedChunks}/${job.totalChunks} · ${job.progress}%`
-                              : `${job.progress}%`
-                          : job.status === 'success'
-                            ? 'Complete'
-                            : 'Failed'}
+                      <p className="text-xs text-muted-foreground">
+                        {statusText}
                       </p>
                     </div>
                     <div className="shrink-0">
                       {isActive && (
-                        <Loader2 className="size-4 animate-spin text-primary" />
+                        <Loader2
+                          className={`size-4 animate-spin ${iconColor}`}
+                        />
                       )}
                       {job.status === 'success' && (
                         <CheckCircle2 className="size-5 text-emerald-500" />
@@ -106,7 +136,10 @@ export function TransferWidget() {
                     </div>
                   </div>
                   {isActive && (
-                    <Progress value={job.progress} className="h-1.5" />
+                    <Progress
+                      value={job.progress}
+                      className={`h-1.5 ${isDownload ? '[&>div]:bg-blue-500' : '[&>div]:bg-emerald-500'}`}
+                    />
                   )}
                 </div>
               );

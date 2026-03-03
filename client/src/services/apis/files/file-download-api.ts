@@ -1,9 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { ApiResponse } from '../types';
 import api from '../setup';
+import { createStreamDownload } from '../../../services/stream-download';
 import { DownloadPlanResponse } from './types';
-
-const MAX_PARALLEL_DOWNLOADS = 6;
 
 export type DownloadFileParams = {
   fileId: string;
@@ -13,12 +12,6 @@ export type DownloadFileParams = {
 
 /**
  * Downloads a file by fetching chunks directly from cloud storage.
- *
- * Strategy 1 (Chrome/Edge): Uses the File System Access API for zero-memory
- * streaming directly to disk — chunks are written sequentially.
- *
- * Strategy 2 (fallback): Downloads chunks in parallel as Blobs, then
- * concatenates and triggers a classic download link.
  */
 export const downloadFileRequest = async ({
   fileId,
@@ -33,137 +26,99 @@ export const downloadFileRequest = async ({
 
   const { file_name, file_size, mime_type, chunks } = planResponse.data;
   let loadedBytes = 0;
+  let lastReportedProgress = -1;
+
+  // Create an abort controller to stop fetching if the user cancels the download.
+  const abortController = new AbortController();
 
   // Helper: fetch a single chunk directly from cloud storage.
   const fetchChunk = (index: number) =>
     fetch(chunks[index].download_url, {
       headers: { Authorization: `Bearer ${chunks[index].access_token}` },
+      signal: abortController.signal,
     });
 
-  // Strategy 1: File System Access API (memory-efficient streaming)
-  if ('showSaveFilePicker' in window) {
+  const streamChunk = async (
+    index: number,
+    onData: (value: Uint8Array) => void | Promise<void>,
+  ) => {
+    let response: Response;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const handle = await (window as any).showSaveFilePicker({
-        suggestedName: file_name,
-        types: [
-          {
-            description: 'File',
-            accept: { [mime_type || 'application/octet-stream']: [] },
-          },
-        ],
-      });
-
-      const writable = await handle.createWritable();
-
-      // Download chunks sequentially (must write in order).
-      for (let i = 0; i < chunks.length; i++) {
-        const response = await fetchChunk(i);
-        if (!response.ok) {
-          await writable.abort();
-          throw new Error(`Failed to download chunk ${i}: ${response.status}`);
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) {
-          await writable.abort();
-          throw new Error(`No response body for chunk ${i}`);
-        }
-
-        // Stream directly to disk — zero memory buffering.
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { done, value } = await reader.read();
-
-          if (done) break;
-
-          await writable.write(value);
-          loadedBytes += value.length;
-
-          if (onProgress && file_size) {
-            onProgress(Math.round((loadedBytes * 100) / file_size));
-          }
-        }
-
-        if (onChunkProgress) {
-          onChunkProgress(i + 1, chunks.length);
-        }
-      }
-
-      await writable.close();
-
-      return;
-    } catch (err) {
-      // User cancelled the save dialog.
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        return;
-      }
-      // If File System API fails for other reasons, fall through to blob fallback.
-      console.warn('File System Access API failed, falling back to blob:', err);
+      response = await fetchChunk(index);
+    } catch (err: any) {
+      if (err.name === 'AbortError') throw err; // Re-throw to propagate cancellation
+      throw err;
     }
-  }
 
-  // Strategy 2: Parallel streaming download (fallback for Firefox/Safari).
-  const chunkBlobs: (Blob | null)[] = new Array(chunks.length).fill(null);
-  const active = new Set<Promise<void>>();
-  let completedChunksCount = 0;
+    if (!response.ok) {
+      throw new Error(`Failed to download chunk ${index}: ${response.status}`);
+    }
 
-  for (let i = 0; i < chunks.length; i++) {
-    const downloadChunk = async (index: number) => {
-      const response = await fetchChunk(index);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to download chunk ${index}: ${response.status}`,
-        );
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error(`No response body for chunk ${index}`);
+    }
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let done, value;
+      try {
+        ({ done, value } = await reader.read());
+      } catch (err: any) {
+        if (err.name === 'AbortError') throw err; // Re-throw
+        throw err;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error(`No response body for chunk ${index}`);
-      }
+      if (done || !value) break;
 
-      // Stream the chunk and collect bytes for later Blob assembly.
-      const parts: Uint8Array[] = [];
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        parts.push(value);
-        loadedBytes += value.length;
-        if (onProgress && file_size) {
-          onProgress(Math.round((loadedBytes * 100) / file_size));
+      const chunkLength = value.length;
+      await onData(value);
+      loadedBytes += chunkLength;
+
+      if (onProgress && file_size) {
+        const currentProgress = Math.round((loadedBytes * 100) / file_size);
+        if (currentProgress !== lastReportedProgress) {
+          onProgress(currentProgress);
+          lastReportedProgress = currentProgress;
         }
       }
-
-      chunkBlobs[index] = new Blob(parts as BlobPart[]);
-      completedChunksCount++;
-      if (onChunkProgress) {
-        onChunkProgress(completedChunksCount, chunks.length);
-      }
-    };
-
-    const p: Promise<void> = downloadChunk(i).finally(() => active.delete(p));
-    active.add(p);
-
-    if (active.size >= MAX_PARALLEL_DOWNLOADS) {
-      await Promise.race(active);
     }
+
+    if (onChunkProgress) {
+      onChunkProgress(index + 1, chunks.length);
+    }
+  };
+
+  try {
+    const writer = await createStreamDownload({
+      filename: file_name,
+      filesize: file_size,
+      mimetype: mime_type,
+      onCancel: () => {
+        // Stop any active or future fetch calls.
+        abortController.abort();
+      },
+    });
+
+    // Chunks must be written sequentially for the stream.
+    for (let i = 0; i < chunks.length; i++) {
+      if (abortController.signal.aborted) {
+        throw new Error('Download cancelled');
+      }
+      await streamChunk(i, (value) => writer.write(value));
+    }
+
+    if (!abortController.signal.aborted) {
+      writer.close();
+    } else {
+      throw new Error('Download cancelled');
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError' || err.message === 'Download cancelled') {
+      throw new Error('Download cancelled');
+    }
+    throw err;
   }
-
-  await Promise.all(active);
-
-  // Combine chunks in order and trigger browser download.
-  const finalBlob = new Blob(chunkBlobs as Blob[], {
-    type: mime_type || 'application/octet-stream',
-  });
-  const url = URL.createObjectURL(finalBlob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file_name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 };
 
 // Hook.
