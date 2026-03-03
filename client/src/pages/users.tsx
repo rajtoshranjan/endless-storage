@@ -195,7 +195,7 @@ export function UsersPage() {
         }
       />
 
-      <div className="h-[calc(100dvh-18rem)] w-full overflow-auto md:h-[calc(100dvh-16rem)]">
+      <ScrollArea className="h-[calc(100dvh-18rem)] w-full md:h-[calc(100dvh-16rem)]">
         <div className="rounded-lg border">
           <Table>
             <TableHeader className="bg-secondary/50">
@@ -284,7 +284,7 @@ export function UsersPage() {
             </TableBody>
           </Table>
         </div>
-      </div>
+      </ScrollArea>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

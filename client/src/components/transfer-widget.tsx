@@ -13,10 +13,15 @@ import {
   selectIsWidgetVisible,
   selectTransferJobs,
 } from '../store/slices';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Progress } from './ui/progress';
-import { ScrollArea } from './ui/scroll-area';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Progress,
+  ScrollArea,
+} from './ui';
 
 export function TransferWidget() {
   const dispatch = useAppDispatch();

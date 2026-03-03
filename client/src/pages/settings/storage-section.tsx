@@ -1,13 +1,14 @@
 import { Cloud, CloudOff, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button } from '../../components/ui/button';
 import {
+  Button,
+  ScrollArea,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '../../components/ui/card';
+} from '../../components/ui';
 import { toast } from '../../hooks/use-toast';
 import { cn } from '../../lib/utils';
 import {
@@ -206,7 +207,7 @@ export function StorageSection() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <ScrollArea className="h-[calc(100dvh-32rem)] w-full md:h-[calc(100dvh-26rem)]">
               {storageAccounts.map((account) => {
                 const meta = PROVIDER_META[account.provider] || {
                   label: account.provider,
@@ -216,7 +217,7 @@ export function StorageSection() {
                 return (
                   <div
                     key={account.id}
-                    className="group flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent/40"
+                    className="group mb-2 flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent/40"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div
@@ -246,7 +247,7 @@ export function StorageSection() {
                   </div>
                 );
               })}
-            </div>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
