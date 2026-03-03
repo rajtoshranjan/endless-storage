@@ -1,5 +1,4 @@
 import io
-import logging
 
 from django.utils import timezone
 from google.auth.transport.requests import Request
@@ -10,8 +9,6 @@ from googleapiclient.http import MediaIoBaseUpload
 from endless_storage.env_variables import EnvVariable
 
 from .base import BaseStorageConnector
-
-logger = logging.getLogger(__name__)
 
 ENDLESS_STORAGE_FOLDER_NAME = "Endless Storage"
 

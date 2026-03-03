@@ -1,9 +1,6 @@
-import logging
-
+from endless_storage import logger
 from storage.connectors import get_connector
 from storage.models import StorageAccount
-
-logger = logging.getLogger(__name__)
 
 
 def get_all_account_quotas(user) -> list[dict]:

@@ -1,5 +1,3 @@
-import logging
-
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
@@ -10,6 +8,7 @@ from rest_framework.viewsets import ModelViewSet
 from chunking.distributor import ChunkDistributor
 from chunking.exceptions import InsufficientStorageError
 from drive.helpers import get_active_drive
+from endless_storage import logger
 from storage.connectors import get_connector
 
 from ..helpers import get_all_account_quotas
@@ -20,8 +19,6 @@ from ..permissions import (
     HasUploadFilePermission,
 )
 from ..serializers import FileSerializer, SharedFileSerializer
-
-logger = logging.getLogger(__name__)
 
 
 class FileViewSet(ModelViewSet):

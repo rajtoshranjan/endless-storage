@@ -10,6 +10,7 @@ async def stream_as_async(sync_iterable):
     in a background thread and yields chunks through an asyncio queue,
     enabling true real-time streaming under ASGI.
     """
+
     loop = asyncio.get_running_loop()
     done = object()
     queue = asyncio.Queue(maxsize=4)

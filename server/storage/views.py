@@ -1,5 +1,3 @@
-import logging
-
 from google_auth_oauthlib.flow import Flow
 from rest_framework import status
 from rest_framework.decorators import action
@@ -7,13 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
+from endless_storage import logger
 from endless_storage.env_variables import EnvVariable
 
 from .constants import StorageProvider
 from .models import StorageAccount
 from .serializers import StorageAccountSerializer
-
-logger = logging.getLogger(__name__)
 
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/drive.file",

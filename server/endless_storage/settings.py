@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import logging
-import os
 import string
 import sys
 from datetime import timedelta
@@ -215,34 +214,30 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
+        "custom": {
+            "format": (
+                "%(levelname)-8s | %(asctime)s | "
+                "%(name)s | %(module)s:%(funcName)s:%(lineno)d | "
+                "%(message)s"
+            ),
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "file": {
-            "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "debug.log"),
-            "formatter": "verbose",
+            "stream": "ext://sys.stdout",
+            "formatter": "custom",
         },
     },
     "loggers": {
         "django": {
-            "handlers": ["console", "file"],
-            "level": "INFO",
-            "propagate": True,
+            "handlers": ["console"],
+            "level": EnvVariable.LOG_LEVEL.value.upper(),
+            "propagate": False,
         },
         "django.request": {
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
         },
@@ -253,8 +248,8 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["console", "file"],
-        "level": "DEBUG",
+        "handlers": ["console"],
+        "level": EnvVariable.LOG_LEVEL.value.upper(),
     },
 }
 

@@ -1,8 +1,4 @@
-import logging
-
 from storage.connectors import get_connector
-
-logger = logging.getLogger(__name__)
 
 
 class ChunkDownloader:
