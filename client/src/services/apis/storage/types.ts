@@ -9,6 +9,17 @@ export type StorageAccountDataFromServer = {
   created_at: string;
 };
 
+export type StorageQuota = {
+  limit: number;
+  usage: number;
+  remaining: number;
+};
+
+export type StorageAccountsListFromServer = {
+  accounts: StorageAccountDataFromServer[];
+  quota: StorageQuota;
+};
+
 // Client types (camelCase)
 export type StorageAccountData = {
   id: string;
@@ -16,6 +27,11 @@ export type StorageAccountData = {
   providerEmail: string;
   isActive: boolean;
   createdAt: string;
+};
+
+export type StorageAccountsResponse = {
+  accounts: StorageAccountData[];
+  quota: StorageQuota;
 };
 
 export type GoogleAuthUrlResponse = {

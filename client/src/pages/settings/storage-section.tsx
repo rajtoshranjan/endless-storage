@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '../../components/ui';
 import { toast } from '../../hooks/use-toast';
-import { cn } from '../../lib/utils';
+import { cn, formatBytes } from '../../lib/utils';
 import {
   handleResponseErrorMessage,
   useConnectGoogleDrive,
@@ -55,7 +55,9 @@ export function StorageSection() {
   const { mutate: connectGoogleDrive } = useConnectGoogleDrive();
   const { mutate: disconnectAccount } = useDisconnectStorageAccount();
 
-  const storageAccounts = storageAccountsResponse?.data || [];
+  const responseData = storageAccountsResponse?.data;
+  const storageAccounts = responseData?.accounts || [];
+  const quota = responseData?.quota;
 
   const handleOAuthMessage = useCallback(
     (event: MessageEvent) => {
@@ -148,9 +150,10 @@ export function StorageSection() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Cloud Storage</h2>
+          <h2 className="text-lg font-semibold">Linked Storage</h2>
           <p className="text-sm text-muted-foreground">
-            Connect storage providers to store your files
+            Connect your cloud drives and turn them into one limitless storage
+            system
           </p>
         </div>
         <Button
@@ -170,12 +173,39 @@ export function StorageSection() {
 
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-sm">Connected Accounts</CardTitle>
-          <CardDescription>
-            {storageAccounts.length > 0
-              ? `${storageAccounts.length} account${storageAccounts.length > 1 ? 's' : ''} connected`
-              : 'No accounts connected yet'}
-          </CardDescription>
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+            <div>
+              <CardTitle className="text-sm">Connected Accounts</CardTitle>
+              <CardDescription>
+                {storageAccounts.length > 0
+                  ? `${storageAccounts.length} account${storageAccounts.length > 1 ? 's' : ''} connected`
+                  : 'No accounts connected yet'}
+              </CardDescription>
+            </div>
+            {quota && quota.limit > 0 && (
+              <div className="flex flex-col gap-1.5 text-left md:min-w-64 md:text-right">
+                <div className="flex justify-between gap-4 text-xs">
+                  <span className="font-medium text-foreground">
+                    Storage Usage
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatBytes(quota.usage)} / {formatBytes(quota.limit)}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-primary transition-all duration-500 ease-in-out"
+                    style={{
+                      width: `${Math.min(100, (quota.usage / quota.limit) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-0.5 text-right text-[10px] text-muted-foreground">
+                  {formatBytes(quota.remaining)} available
+                </div>
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

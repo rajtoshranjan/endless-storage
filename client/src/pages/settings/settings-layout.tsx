@@ -19,7 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/settings/storage',
-    label: 'Cloud Storage',
+    label: 'Linked Storage',
     icon: HardDrive,
     description: 'Connected accounts',
   },

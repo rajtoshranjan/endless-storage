@@ -7,24 +7,29 @@ import {
   GoogleCallbackPayload,
   StorageAccountData,
   StorageAccountDataFromServer,
+  StorageAccountsListFromServer,
+  StorageAccountsResponse,
 } from './types';
 
 // API Functions
 export const getStorageAccountsRequest = async (): Promise<
-  ApiResponse<StorageAccountData[]>
+  ApiResponse<StorageAccountsResponse>
 > => {
   const response = await api.get<
-    StorageAccountDataFromServer[],
-    ApiResponse<StorageAccountDataFromServer[]>
+    StorageAccountsListFromServer,
+    ApiResponse<StorageAccountsListFromServer>
   >('/storage/');
 
   return {
     ...response,
-    data: response.data.map((account) =>
-      apiDataResponseMapper<StorageAccountDataFromServer, StorageAccountData>(
-        account,
+    data: {
+      quota: response.data.quota,
+      accounts: response.data.accounts.map((account) =>
+        apiDataResponseMapper<StorageAccountDataFromServer, StorageAccountData>(
+          account,
+        ),
       ),
-    ),
+    },
   };
 };
 
