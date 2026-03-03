@@ -145,7 +145,7 @@ export function StorageSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Cloud Storage</h2>
           <p className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ export function StorageSection() {
                     key={account.id}
                     className="group flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent/40"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <div
                         className={cn(
                           'flex size-9 items-center justify-center rounded-full',
@@ -227,9 +227,9 @@ export function StorageSection() {
                       >
                         <Cloud className={cn('size-4', meta.color)} />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">{meta.label}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="truncate text-xs text-muted-foreground">
                           {account.providerEmail}
                         </p>
                       </div>
@@ -238,7 +238,7 @@ export function StorageSection() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDisconnect(account)}
-                      className="h-8 gap-1.5 rounded-full px-3 text-xs text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                      className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="size-3" />
                       Remove
