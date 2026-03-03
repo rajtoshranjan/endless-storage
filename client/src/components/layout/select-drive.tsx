@@ -69,7 +69,7 @@ export const SelectDrive = () => {
       <SelectContent className="w-[200px] p-1.5 sm:w-[240px] sm:p-2">
         <div className="mb-1.5 sm:mb-2">
           <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:mb-2 sm:text-xs">
-            Personal Drives
+            Personal Drive
           </div>
           {myDrives &&
             myDrives.map((drive) => (

@@ -35,7 +35,7 @@ export function Layout() {
               <div className="flex items-center gap-3 sm:gap-8">
                 <Link to="/" className="flex items-center gap-2">
                   <CustomIcons.Logo className="size-4 text-primary sm:size-5" />
-                  <span className="text-base font-semibold tracking-tight sm:text-lg">
+                  <span className="hidden text-base font-semibold tracking-tight sm:inline sm:text-lg">
                     Endless Storage
                   </span>
                 </Link>
