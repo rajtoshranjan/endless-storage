@@ -1,5 +1,3 @@
-import logging
-
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -17,7 +15,7 @@ from ..models import FileShareLink
 from ..permissions import CanManageFileShareLinkPermission, has_manage_file_permission
 from ..serializers import FileShareLinkSerializer
 
-logger = logging.getLogger(__name__)
+from endless_storage import logger
 
 
 class FileShareLinkViewSet(ModelViewSet):

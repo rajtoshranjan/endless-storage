@@ -22,14 +22,8 @@ import {
   useGetFiles,
   useGetSharedFiles,
 } from '../../services/apis';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import {
-  addTransferJob,
-  selectActiveDrive,
-  setTransferStatus,
-  updateTransferChunkProgress,
-  updateTransferProgress,
-} from '../../store/slices';
+import { useAppSelector } from '../../store/hooks';
+import { selectActiveDrive } from '../../store/slices';
 import { PageHeader } from '../../components/layout';
 import { FileCard } from './file-card';
 import { FilePermissionsDialog } from './file-permissions-dialog';
@@ -43,7 +37,6 @@ type FileManagementPageProps = {
 export function FileManagementPage({
   fileType = 'drive',
 }: FileManagementPageProps) {
-  const dispatch = useAppDispatch();
   const { activeDriveId, canManageFiles } = useAppSelector(selectActiveDrive);
 
   // States.
@@ -82,42 +75,11 @@ export function FileManagementPage({
   };
 
   const handleDownload = (file: FileData) => {
-    const jobId = `download-${file.id}-${Date.now()}`;
-    dispatch(
-      addTransferJob({
-        id: jobId,
-        fileName: file.name,
-        totalChunks: 1, // Will be overridden by first onChunkProgress
-        type: 'download',
-      }),
-    );
-
-    downloadFile(
-      {
-        fileId: file.id,
-        onProgress: (progress) => {
-          dispatch(updateTransferProgress({ id: jobId, progress }));
-        },
-        onChunkProgress: (completedChunks, totalChunks) => {
-          dispatch(
-            updateTransferChunkProgress({
-              id: jobId,
-              completedChunks,
-              totalChunks,
-            }),
-          );
-        },
+    downloadFile(file.id, {
+      onError: (error) => {
+        handleResponseErrorMessage(error);
       },
-      {
-        onSuccess: () => {
-          dispatch(setTransferStatus({ id: jobId, status: 'success' }));
-        },
-        onError: (error) => {
-          dispatch(setTransferStatus({ id: jobId, status: 'error' }));
-          handleResponseErrorMessage(error);
-        },
-      },
-    );
+    });
   };
 
   const handleDelete = (file: FileData) => {

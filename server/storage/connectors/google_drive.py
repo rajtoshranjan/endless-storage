@@ -4,7 +4,7 @@ from django.utils import timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 from endless_storage.env_variables import EnvVariable
 
@@ -25,9 +25,9 @@ class GoogleDriveConnector(BaseStorageConnector):
         super().__init__(storage_account)
         self._service = None
 
-    def _get_credentials(self) -> Credentials:
-        """Build Google OAuth2 credentials from stored tokens."""
-        creds = Credentials(
+    def _build_credentials(self) -> Credentials:
+        """Build a Credentials object from the currently stored tokens."""
+        return Credentials(
             token=self.storage_account.access_token,
             refresh_token=self.storage_account.refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
@@ -35,24 +35,20 @@ class GoogleDriveConnector(BaseStorageConnector):
             client_secret=self._get_client_secret(),
         )
 
+    def _get_credentials(self) -> Credentials:
+        """Return valid credentials, refreshing if needed."""
+        creds = self._build_credentials()
+
         if creds.expired or not creds.valid:
             self.refresh_credentials()
-            creds = Credentials(
-                token=self.storage_account.access_token,
-                refresh_token=self.storage_account.refresh_token,
-                token_uri="https://oauth2.googleapis.com/token",
-                client_id=self._get_client_id(),
-                client_secret=self._get_client_secret(),
-            )
+            creds = self._build_credentials()
 
         return creds
 
-    def _get_client_id(self):
-
+    def _get_client_id(self) -> str:
         return EnvVariable.GOOGLE_CLIENT_ID.value
 
-    def _get_client_secret(self):
-
+    def _get_client_secret(self) -> str:
         return EnvVariable.GOOGLE_CLIENT_SECRET.value
 
     def _get_service(self):

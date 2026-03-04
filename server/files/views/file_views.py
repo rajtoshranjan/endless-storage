@@ -1,11 +1,15 @@
-from django.shortcuts import get_object_or_404
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from django.http import StreamingHttpResponse
+from django.shortcuts import get_object_or_404, render
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied, NotAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from chunking.distributor import ChunkDistributor
+from chunking.downloader import ChunkDownloader
 from chunking.exceptions import InsufficientStorageError
 from drive.helpers import get_active_drive
 from endless_storage import logger
@@ -19,11 +23,15 @@ from ..permissions import (
     HasUploadFilePermission,
 )
 from ..serializers import FileSerializer, SharedFileSerializer
+from chunking.utils import stream_as_async
 
 
 class FileViewSet(ModelViewSet):
     serializer_class = FileSerializer
     permission_classes = [HadManageFilePermission]
+
+    DOWNLOAD_TOKEN_MAX_AGE = 60  # seconds
+    _download_signer = TimestampSigner(salt="file-download")
 
     def get_permissions(self):
         if self.action in ("init_upload", "confirm_chunk"):
@@ -203,62 +211,70 @@ class FileViewSet(ModelViewSet):
         detail=True,
         methods=["get"],
         permission_classes=[HasDownloadFilePermission],
-        url_path="download-plan",
+        url_path="download-token",
     )
-    def download_plan(self, request, pk=None):
+    def download_token(self, request, pk=None):
         """
-        Return per-chunk direct download URLs and access tokens.
+        Issue a signed, short-lived download token for browser-native downloads.
 
-        The client uses these to download chunks directly from the
-        cloud storage provider without proxying through our server.
-        Access tokens are short-lived (~1 hour) and auto-refreshed.
+        The token is signed with Django's SECRET_KEY via TimestampSigner
+        and embeds the file ID. It expires after DOWNLOAD_TOKEN_MAX_AGE seconds.
         """
         file = get_object_or_404(File, id=pk)
         self.check_object_permissions(request, file)
 
-        chunks = (
-            file.chunks.filter(upload_status="uploaded")
-            .select_related("storage_account")
-            .order_by("chunk_index")
+        token = self._download_signer.sign(str(file.id))
+
+        download_url = request.build_absolute_uri(
+            f"/files/{file.id}/download/?token={token}"
         )
 
-        # Refresh access tokens for each unique storage account
-        account_tokens = {}
-        for chunk in chunks:
-            account = chunk.storage_account
-            if account.id not in account_tokens:
-                try:
-                    connector = get_connector(account)
-                    connector.refresh_credentials()
-                    account.refresh_from_db(fields=["access_token"])
-                except Exception:
-                    pass  # Token may still be valid
-                account_tokens[account.id] = account.access_token
+        return Response({"download_url": download_url})
 
-        chunk_data = []
-        for chunk in chunks:
-            download_url = (
-                f"https://www.googleapis.com/drive/v3/files/"
-                f"{chunk.external_chunk_id}?alt=media"
-            )
-            chunk_data.append(
-                {
-                    "chunk_index": chunk.chunk_index,
-                    "chunk_size": chunk.chunk_size,
-                    "download_url": download_url,
-                    "access_token": account_tokens[chunk.storage_account_id],
-                }
-            )
+    @action(
+        detail=True,
+        methods=["get"],
+        authentication_classes=[],
+        permission_classes=[AllowAny],
+        url_path="download",
+    )
+    def download(self, request, pk=None):
+        token = request.query_params.get("token")
+        if not token:
+            logger.error("Download token is required")
+            raise NotAuthenticated
 
-        return Response(
-            {
-                "file_name": file.name,
-                "file_size": file.file_size,
-                "mime_type": file.mime_type,
-                "chunks": chunk_data,
-            },
-            status=status.HTTP_200_OK,
-        )
+        try:
+            file_id = self._download_signer.unsign(
+                token, max_age=self.DOWNLOAD_TOKEN_MAX_AGE
+            )
+        except SignatureExpired:
+            logger.error("Download token has expired")
+            raise PermissionDenied
+        except BadSignature:
+            logger.error("Invalid download token")
+            raise PermissionDenied
+
+        if str(pk) != file_id:
+            logger.error("Token does not match this file")
+            raise PermissionDenied
+
+        file = get_object_or_404(File, id=pk)
+
+        try:
+            downloader = ChunkDownloader()
+            sync_stream = downloader.stream_chunks(file)
+
+            response = StreamingHttpResponse(
+                stream_as_async(sync_stream), content_type=file.mime_type
+            )
+            response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+            if file.file_size:
+                response["Content-Length"] = file.file_size
+            return response
+        except Exception as e:
+            logger.error(f"Failed to generate download URL for share link: {e}")
+            return render(request, "link_expired.html")
 
     @action(
         detail=False,
