@@ -13,7 +13,10 @@ class TestChunkDistributor(TestCase):
     def _make_quota(self, name, remaining):
         account = MagicMock()
         account.__str__ = lambda s: name
-        return {"account": account, "remaining": remaining}
+        return {
+            "account": account,
+            "remaining": remaining + ChunkDistributor.SAFETY_BUFFER_BYTES,
+        }
 
     def test_single_drive_fits(self):
         """File fits on a single drive — should produce one chunk."""

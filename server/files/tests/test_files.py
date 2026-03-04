@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from endless_storage.tests import BaseTestCase
+from chunking.distributor import ChunkDistributor
 from storage.constants import StorageProvider
 from storage.models import StorageAccount
 
@@ -144,7 +145,7 @@ class TestFileEndpoints(BaseTestCase):
     def test_init_upload_multi_chunk(self, mock_upload_url, mock_quota):
         """Test init-upload distributes across multiple drives."""
         # Create a second storage account
-        storage_account_2 = StorageAccount.objects.create(
+        StorageAccount.objects.create(
             user=self.user,
             provider=StorageProvider.GOOGLE_DRIVE.value,
             provider_email="test2@gmail.com",
@@ -185,8 +186,14 @@ class TestFileEndpoints(BaseTestCase):
         self.assertEqual(len(response.data["chunks"]), 2)
 
         # Verify chunks are ordered by size (biggest drive first)
-        self.assertEqual(response.data["chunks"][0]["chunk_size"], 10_000_000_000)
-        self.assertEqual(response.data["chunks"][1]["chunk_size"], 2_000_000_000)
+        self.assertEqual(
+            response.data["chunks"][0]["chunk_size"],
+            10_000_000_000 - ChunkDistributor.SAFETY_BUFFER_BYTES,
+        )
+        self.assertEqual(
+            response.data["chunks"][1]["chunk_size"],
+            2_000_000_000 + ChunkDistributor.SAFETY_BUFFER_BYTES,
+        )
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
     def test_init_upload_insufficient_space(self, mock_quota):

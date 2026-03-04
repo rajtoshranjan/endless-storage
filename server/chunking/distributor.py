@@ -4,6 +4,8 @@ from .exceptions import InsufficientStorageError
 class ChunkDistributor:
     """Allocates file bytes across storage accounts by available space."""
 
+    SAFETY_BUFFER_BYTES = 5 * 1024 * 1024
+
     def compute_allocation(
         self,
         file_size: int,
@@ -31,8 +33,16 @@ class ChunkDistributor:
         Raises:
             InsufficientStorageError: If total free space < file_size.
         """
-        # Filter out accounts with no usable space
-        usable = [q for q in account_quotas if q["remaining"] > 0]
+
+        # Filter out accounts with no usable space after the safety buffer.
+        usable = [
+            {
+                "account": q["account"],
+                "remaining": q["remaining"] - self.SAFETY_BUFFER_BYTES,
+            }
+            for q in account_quotas
+            if q["remaining"] > self.SAFETY_BUFFER_BYTES
+        ]
 
         total_available = sum(q["remaining"] for q in usable)
         if total_available < file_size:

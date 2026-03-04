@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -63,7 +65,8 @@ class FileShareLinkViewSet(ModelViewSet):
             response = StreamingHttpResponse(
                 stream_as_async(sync_stream), content_type=file.mime_type
             )
-            response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+            encoded_name = quote(file.name)
+            response["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_name}"
             if file.file_size:
                 response["Content-Length"] = file.file_size
             return response

@@ -1,3 +1,6 @@
+from urllib.parse import quote
+
+from django.conf import settings
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -77,7 +80,14 @@ class FileViewSet(ModelViewSet):
             )
 
         drive = get_active_drive(request)
-        origin = request.META.get("HTTP_ORIGIN", request.META.get("HTTP_REFERER", ""))
+
+        # Only forward the request origin if it is in our allowed CORS list.
+        request_origin = request.META.get("HTTP_ORIGIN", "")
+        allowed_origins = getattr(settings, "CORS_ALLOWED_ORIGINS", None)
+        if allowed_origins is None or request_origin in allowed_origins:
+            origin = request_origin
+        else:
+            origin = ""
 
         # Create file record
         file = File.objects.create(
@@ -125,13 +135,8 @@ class FileViewSet(ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="confirm-chunk")
     def confirm_chunk(self, request, pk=None):
-        """
-        Confirm a single chunk has been uploaded.
 
-        Updates the FileChunk record with the external file ID
-        and marks it as uploaded.
-        """
-        file = get_object_or_404(File, id=pk)
+        file = self.get_object()
 
         chunk_index = request.data.get("chunk_index")
         external_chunk_id = request.data.get("external_chunk_id")
@@ -209,8 +214,7 @@ class FileViewSet(ModelViewSet):
         The token is signed with Django's SECRET_KEY via TimestampSigner
         and embeds the file ID. It expires after DOWNLOAD_TOKEN_MAX_AGE seconds.
         """
-        file = get_object_or_404(File, id=pk)
-        self.check_object_permissions(request, file)
+        file = self.get_object()
 
         token = self._download_signer.sign(str(file.id))
 
@@ -257,7 +261,10 @@ class FileViewSet(ModelViewSet):
             response = StreamingHttpResponse(
                 stream_as_async(sync_stream), content_type=file.mime_type
             )
-            response["Content-Disposition"] = f'attachment; filename="{file.name}"'
+            encoded_name = quote(file.name)
+            response["Content-Disposition"] = (
+                f"attachment; filename*=UTF-8''{encoded_name}"
+            )
             if file.file_size:
                 response["Content-Length"] = file.file_size
             return response
