@@ -4,7 +4,7 @@ export type UploadJob = {
   id: string;
   fileName: string;
   progress: number;
-  status: 'uploading' | 'success' | 'error';
+  status: 'uploading' | 'success' | 'error' | 'cancelled';
   totalChunks: number;
   completedChunks: number;
 };
@@ -61,7 +61,10 @@ export const uploadSlice = createSlice({
     },
     setUploadStatus: (
       state,
-      action: PayloadAction<{ id: string; status: 'success' | 'error' }>,
+      action: PayloadAction<{
+        id: string;
+        status: 'success' | 'error' | 'cancelled';
+      }>,
     ) => {
       if (state.jobs[action.payload.id]) {
         state.jobs[action.payload.id].status = action.payload.status;

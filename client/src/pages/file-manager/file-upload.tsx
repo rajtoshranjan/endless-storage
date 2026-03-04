@@ -44,10 +44,11 @@ export const FileUpload = ({
       try {
         await uploadFileAsync({
           file,
-          onProgress: (progress) => {
+          jobId,
+          onProgress: (progress: number) => {
             dispatch(updateUploadProgress({ id: jobId, progress }));
           },
-          onChunkProgress: (completedChunks, totalChunks) => {
+          onChunkProgress: (completedChunks: number, totalChunks: number) => {
             dispatch(
               updateUploadChunkProgress({
                 id: jobId,
@@ -61,6 +62,11 @@ export const FileUpload = ({
         dispatch(setUploadStatus({ id: jobId, status: 'success' }));
         onFileUploadSuccess();
       } catch (error: any) {
+        if (error.message === 'Upload cancelled') {
+          dispatch(setUploadStatus({ id: jobId, status: 'cancelled' }));
+          return;
+        }
+
         dispatch(setUploadStatus({ id: jobId, status: 'error' }));
         if (error.meta?.status_code === 409) {
           toast({

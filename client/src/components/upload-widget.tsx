@@ -14,6 +14,7 @@ import {
   selectUploadJobs,
 } from '../store/slices';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { abortUpload } from '../services/apis';
 import { Button, ScrollArea, Progress } from './ui';
 
 export function UploadWidget() {
@@ -36,7 +37,7 @@ export function UploadWidget() {
   }
 
   return (
-    <div className="fixed bottom-0 right-10 z-50 flex w-80 flex-col overflow-hidden rounded-t-lg border bg-background shadow-2xl sm:w-[360px]">
+    <div className="fixed bottom-0 right-8 z-50 flex w-80 flex-col overflow-hidden rounded-t-lg border bg-background shadow-2xl sm:w-[360px]">
       {/* Header - Sleek and dark similar to GD */}
       <div
         className="flex cursor-pointer items-center justify-between bg-zinc-900 px-4 py-3 text-zinc-50 dark:bg-zinc-800"
@@ -124,7 +125,9 @@ export function UploadWidget() {
                         <span className="mt-0.5 text-xs text-muted-foreground">
                           {job.status === 'success'
                             ? 'Upload complete'
-                            : 'Upload failed'}
+                            : job.status === 'cancelled'
+                              ? 'Upload cancelled'
+                              : 'Upload failed'}
                         </span>
                       )}
                     </div>
@@ -132,9 +135,22 @@ export function UploadWidget() {
 
                   <div className="flex shrink-0 items-center justify-center pl-2">
                     {isActive ? (
-                      <Loader2 className="size-5 animate-spin text-emerald-500" />
+                      <div className="flex items-center gap-1.5">
+                        <Loader2 className="size-4 animate-spin text-emerald-500" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 rounded-full text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground"
+                          onClick={() => abortUpload(job.id)}
+                          title="Cancel upload"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
                     ) : job.status === 'success' ? (
                       <CheckCircle2 className="size-5 text-emerald-500" />
+                    ) : job.status === 'cancelled' ? (
+                      <XCircle className="size-5 text-muted-foreground" />
                     ) : (
                       <XCircle className="size-5 text-destructive" />
                     )}
