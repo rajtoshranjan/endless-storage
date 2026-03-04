@@ -34,11 +34,11 @@ export type StorageAccountsResponse = {
   quota: StorageQuota;
 };
 
-export type GoogleAuthUrlResponse = {
+export type OAuthUrlResponse = {
   url: string;
   state: string;
 };
 
-export type GoogleCallbackPayload = {
+export type OAuthCallbackPayload = {
   code: string;
 };

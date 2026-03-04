@@ -1,3 +1,4 @@
+from files.models import ChunkStatus
 from storage.connectors import get_connector
 
 
@@ -18,7 +19,7 @@ class ChunkDownloader:
             bytes: Chunk data fragments.
         """
         chunks = (
-            file.chunks.filter(upload_status="uploaded")
+            file.chunks.filter(upload_status=ChunkStatus.UPLOADED)
             .select_related("storage_account")
             .order_by("chunk_index")
         )

@@ -47,16 +47,16 @@ class TestFileEndpoints(BaseTestCase):
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
     @patch(
-        "storage.connectors.google_drive.GoogleDriveConnector.create_resumable_upload"
+        "storage.connectors.google_drive.GoogleDriveConnector.get_upload_url"
     )
-    def test_init_upload(self, mock_resumable, mock_quota):
+    def test_init_upload(self, mock_upload_url, mock_quota):
         """Test init-upload returns chunk plan with upload URLs."""
         mock_quota.return_value = {
             "limit": 15_000_000_000,
             "usage": 0,
             "remaining": 15_000_000_000,
         }
-        mock_resumable.return_value = "https://upload.example.com/resumable-url"
+        mock_upload_url.return_value = "https://upload.example.com/upload-url"
 
         response = self.client.post(
             reverse("file-init-upload"),
@@ -143,9 +143,9 @@ class TestFileEndpoints(BaseTestCase):
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
     @patch(
-        "storage.connectors.google_drive.GoogleDriveConnector.create_resumable_upload"
+        "storage.connectors.google_drive.GoogleDriveConnector.get_upload_url"
     )
-    def test_init_upload_multi_chunk(self, mock_resumable, mock_quota):
+    def test_init_upload_multi_chunk(self, mock_upload_url, mock_quota):
         """Test init-upload distributes across multiple drives."""
         # Create a second storage account
         storage_account_2 = StorageAccount.objects.create(
@@ -170,7 +170,7 @@ class TestFileEndpoints(BaseTestCase):
                 "remaining": 10_000_000_000,
             },
         ]
-        mock_resumable.return_value = "https://upload.example.com/resumable-url"
+        mock_upload_url.return_value = "https://upload.example.com/upload-url"
 
         # Upload a 12GB file — should need both drives
         file_size = 12_000_000_000

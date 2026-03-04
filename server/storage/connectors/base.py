@@ -22,19 +22,19 @@ class BaseStorageConnector(ABC):
         """
 
     @abstractmethod
-    def create_resumable_upload(
+    def get_upload_url(
         self, file_name: str, mime_type: str, origin: str = ""
     ) -> str:
         """
-        Create a resumable upload session.
+        Return a URL the client can use to upload a file directly to the storage provider.
 
         Args:
             file_name: Name of the file.
             mime_type: MIME type of the file.
-            origin: The origin domain for CORS.
+            origin: The request origin for CORS (used by providers that require it).
 
         Returns:
-            The resumable upload URL.
+            The direct upload URL.
         """
 
     @abstractmethod

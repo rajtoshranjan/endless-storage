@@ -1,6 +1,10 @@
+import logging
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+
+logger = logging.getLogger(__name__)
 
 
 def handle_validation_error(exc, context, response):
@@ -82,7 +86,7 @@ def handle_generic_error(exc, context, response):
     """Handle any unhandled exceptions."""
 
     if not response:
-        print(exc)
+        logger.exception("Unhandled exception", exc_info=exc)
         return Response(
             {
                 "success": False,

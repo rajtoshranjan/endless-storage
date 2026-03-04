@@ -66,7 +66,7 @@ class HasUploadFilePermission(IsAuthenticated):
         return False
 
 
-class HadManageFilePermission(IsAuthenticated):
+class HasManageFilePermission(IsAuthenticated):
     def has_object_permission(self, request, view, file: File):
         return has_manage_file_permission(file, request.user)
 

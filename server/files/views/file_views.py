@@ -19,7 +19,7 @@ from storage.connectors import get_connector
 from ..helpers import get_all_account_quotas
 from ..models import File, FileChunk, FilePermission
 from ..permissions import (
-    HadManageFilePermission,
+    HasManageFilePermission,
     HasDownloadFilePermission,
     HasUploadFilePermission,
 )
@@ -28,7 +28,7 @@ from ..serializers import FileSerializer, SharedFileSerializer
 
 class FileViewSet(ModelViewSet):
     serializer_class = FileSerializer
-    permission_classes = [HadManageFilePermission]
+    permission_classes = [HasManageFilePermission]
 
     DOWNLOAD_TOKEN_MAX_AGE = 60  # seconds
     _download_signer = TimestampSigner(salt="file-download")
@@ -47,16 +47,7 @@ class FileViewSet(ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="init-upload")
     def init_upload(self, request):
-        """
-        Initiate an upload session.
 
-        1. Fetch quotas for all active storage accounts.
-        2. Run ChunkDistributor to compute allocation.
-        3. Create File record with total_chunks.
-        4. Create FileChunk records (status=pending).
-        5. Get a resumable upload URL for each chunk.
-        6. Return file_id + chunk plan.
-        """
         file_name = request.data.get("file_name")
         file_size = int(request.data.get("file_size", 0))
         mime_type = request.data.get("mime_type", "application/octet-stream")
@@ -114,7 +105,7 @@ class FileViewSet(ModelViewSet):
                 if len(allocation) > 1
                 else file_name
             )
-            upload_url = connector.create_resumable_upload(
+            upload_url = connector.get_upload_url(
                 chunk_name, mime_type, origin=origin
             )
 
@@ -142,7 +133,7 @@ class FileViewSet(ModelViewSet):
         Updates the FileChunk record with the external file ID
         and marks it as uploaded.
         """
-        file = get_object_or_404(File, id=pk, owner=request.user)
+        file = get_object_or_404(File, id=pk)
 
         chunk_index = request.data.get("chunk_index")
         external_chunk_id = request.data.get("external_chunk_id")

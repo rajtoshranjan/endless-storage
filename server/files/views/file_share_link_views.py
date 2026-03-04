@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -25,14 +26,16 @@ class FileShareLinkViewSet(ModelViewSet):
 
     def get_queryset(self):
         return FileShareLink.objects.filter(
-            file__drive__owner=self.request.user,
-            expires_at__gte=timezone.now(),
-        ) | FileShareLink.objects.filter(
-            file__drive__members__user=self.request.user,
-            file__drive__members__role__in=[
-                DriveMemberRole.ADMIN.value,
-                DriveMemberRole.REGULAR.value,
-            ],
+            Q(file__drive__owner=self.request.user)
+            | (
+                Q(file__drive__members__user=self.request.user)
+                & Q(
+                    file__drive__members__role__in=[
+                        DriveMemberRole.ADMIN.value,
+                        DriveMemberRole.REGULAR.value,
+                    ]
+                )
+            ),
             expires_at__gte=timezone.now(),
         )
 

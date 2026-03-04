@@ -40,14 +40,9 @@ class FilePermissionViewSet(ModelViewSet):
 
     def partial_update(self, request, pk=None):
         file_permission = self.get_object()
-        can_download = request.data.get("can_download", False)
-
-        file_permission.can_download = can_download
-        file_permission.save()
-
-        response = {
-            "data": self.get_serializer(file_permission).data,
-            "message": "File permission updated successfully",
-        }
-
-        return Response(response)
+        file_permission.can_download = request.data.get(
+            "can_download", file_permission.can_download
+        )
+        file_permission.save(update_fields=["can_download"])
+        serializer = self.get_serializer(file_permission)
+        return Response(serializer.data)

@@ -13,9 +13,9 @@ import { toast } from '../../hooks/use-toast';
 import { cn, formatBytes } from '../../lib/utils';
 import {
   handleResponseErrorMessage,
-  useConnectGoogleDrive,
+  useConnectStorageAccount,
   useDisconnectStorageAccount,
-  useGetGoogleAuthUrl,
+  useGetOAuthUrl,
   useGetStorageAccounts,
   StorageAccountData,
 } from '../../services/apis';
@@ -51,8 +51,8 @@ export function StorageSection() {
     refetch: refetchAccounts,
   } = useGetStorageAccounts();
 
-  const { mutate: getGoogleAuthUrl } = useGetGoogleAuthUrl();
-  const { mutate: connectGoogleDrive } = useConnectGoogleDrive();
+  const { mutate: getOAuthUrl } = useGetOAuthUrl();
+  const { mutate: connectStorageAccount } = useConnectStorageAccount();
   const { mutate: disconnectAccount } = useDisconnectStorageAccount();
 
   const responseData = storageAccountsResponse?.data;
@@ -76,7 +76,7 @@ export function StorageSection() {
       }
 
       if (event.data.code) {
-        connectGoogleDrive(
+        connectStorageAccount(
           { code: event.data.code },
           {
             onSuccess: () => {
@@ -93,7 +93,7 @@ export function StorageSection() {
         );
       }
     },
-    [connectGoogleDrive, refetchAccounts],
+    [connectStorageAccount, refetchAccounts],
   );
 
   useEffect(() => {
@@ -101,9 +101,9 @@ export function StorageSection() {
     return () => window.removeEventListener('message', handleOAuthMessage);
   }, [handleOAuthMessage]);
 
-  const handleConnectGoogleDrive = () => {
+  const handleConnectStorage = () => {
     setIsConnecting(true);
-    getGoogleAuthUrl(undefined, {
+    getOAuthUrl(undefined, {
       onSuccess: (response) => {
         const url = response.data.url;
         const width = 500;
@@ -157,7 +157,7 @@ export function StorageSection() {
           </p>
         </div>
         <Button
-          onClick={handleConnectGoogleDrive}
+          onClick={handleConnectStorage}
           disabled={isConnecting}
           size="sm"
           className="gap-2"
@@ -228,7 +228,7 @@ export function StorageSection() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleConnectGoogleDrive}
+                onClick={handleConnectStorage}
                 disabled={isConnecting}
                 className="mt-1 gap-2"
               >

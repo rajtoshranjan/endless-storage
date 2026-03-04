@@ -35,7 +35,6 @@ export const handleResponseErrorMessage = (
   }
 
   if (setError && error.data) {
-    console.log(error.data);
     Object.entries(error.data).forEach(([field, error]) => {
       const camelCaseField = lodash.camelCase(field);
       if (Array.isArray(error) && error.length > 0) {

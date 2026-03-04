@@ -3,8 +3,8 @@ import { ApiResponse } from '../types';
 import api from '../setup';
 import { apiDataResponseMapper } from '../utils';
 import {
-  GoogleAuthUrlResponse,
-  GoogleCallbackPayload,
+  OAuthUrlResponse,
+  OAuthCallbackPayload,
   StorageAccountData,
   StorageAccountDataFromServer,
   StorageAccountsListFromServer,
@@ -39,14 +39,14 @@ export const disconnectStorageAccountRequest = async (
   return api.delete(`/storage/${id}/`);
 };
 
-export const getGoogleAuthUrlRequest = async (): Promise<
-  ApiResponse<GoogleAuthUrlResponse>
+export const getOAuthUrlRequest = async (): Promise<
+  ApiResponse<OAuthUrlResponse>
 > => {
   return api.get('/storage/google-auth-url/');
 };
 
-export const connectGoogleDriveRequest = async (
-  payload: GoogleCallbackPayload,
+export const connectStorageAccountRequest = async (
+  payload: OAuthCallbackPayload,
 ): Promise<ApiResponse<StorageAccountData>> => {
   const response = await api.post<
     StorageAccountDataFromServer,
@@ -75,12 +75,12 @@ export const useDisconnectStorageAccount = () =>
     mutationFn: disconnectStorageAccountRequest,
   });
 
-export const useGetGoogleAuthUrl = () =>
+export const useGetOAuthUrl = () =>
   useMutation({
-    mutationFn: getGoogleAuthUrlRequest,
+    mutationFn: getOAuthUrlRequest,
   });
 
-export const useConnectGoogleDrive = () =>
+export const useConnectStorageAccount = () =>
   useMutation({
-    mutationFn: connectGoogleDriveRequest,
+    mutationFn: connectStorageAccountRequest,
   });

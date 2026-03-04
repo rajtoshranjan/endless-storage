@@ -1,4 +1,3 @@
-from google_auth_oauthlib.flow import Flow
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -6,17 +5,11 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from endless_storage import logger
-from endless_storage.env_variables import EnvVariable
+from storage.connectors import get_connector
 
-from .constants import StorageProvider
 from .models import StorageAccount
 from .serializers import StorageAccountSerializer
-
-GOOGLE_SCOPES = [
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "openid",
-]
+from .services import connect_google_drive, get_google_oauth_url
 
 
 class StorageAccountViewSet(ModelViewSet):
@@ -34,13 +27,9 @@ class StorageAccountViewSet(ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         serializer = self.get_serializer(queryset, many=True)
 
-        # Calculate totals
         total_limit = 0
         total_usage = 0
         total_remaining = 0
-
-        # Use connector to calculate directly instead of get_all_account_quotas which might fail on one.
-        from storage.connectors import get_connector
 
         for account in queryset:
             try:
@@ -70,25 +59,7 @@ class StorageAccountViewSet(ModelViewSet):
     @action(detail=False, methods=["get"], url_path="google-auth-url")
     def google_auth_url(self, request):
         """Generate Google OAuth2 authorization URL."""
-        flow = Flow.from_client_config(
-            {
-                "web": {
-                    "client_id": EnvVariable.GOOGLE_CLIENT_ID.value,
-                    "client_secret": EnvVariable.GOOGLE_CLIENT_SECRET.value,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                }
-            },
-            scopes=GOOGLE_SCOPES,
-            redirect_uri=EnvVariable.GOOGLE_REDIRECT_URI.value,
-        )
-
-        authorization_url, state = flow.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true",
-            prompt="consent",
-        )
-
+        authorization_url, state = get_google_oauth_url()
         return Response(
             {"url": authorization_url, "state": state},
             status=status.HTTP_200_OK,
@@ -105,46 +76,7 @@ class StorageAccountViewSet(ModelViewSet):
             )
 
         try:
-            flow = Flow.from_client_config(
-                {
-                    "web": {
-                        "client_id": EnvVariable.GOOGLE_CLIENT_ID.value,
-                        "client_secret": EnvVariable.GOOGLE_CLIENT_SECRET.value,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                    }
-                },
-                scopes=GOOGLE_SCOPES,
-                redirect_uri=EnvVariable.GOOGLE_REDIRECT_URI.value,
-            )
-
-            flow.fetch_token(code=code)
-            credentials = flow.credentials
-
-            # Get user's email from Google
-            from google.auth.transport import requests as google_requests
-            from google.oauth2 import id_token
-
-            id_info = id_token.verify_oauth2_token(
-                credentials.id_token,
-                google_requests.Request(),
-                EnvVariable.GOOGLE_CLIENT_ID.value,
-            )
-            provider_email = id_info.get("email", "")
-
-            # Create or update storage account
-            storage_account, created = StorageAccount.objects.update_or_create(
-                user=request.user,
-                provider=StorageProvider.GOOGLE_DRIVE.value,
-                provider_email=provider_email,
-                defaults={
-                    "access_token": credentials.token,
-                    "refresh_token": credentials.refresh_token or "",
-                    "token_expiry": credentials.expiry,
-                    "is_active": True,
-                },
-            )
-
+            storage_account, created = connect_google_drive(request.user, code)
             serializer = StorageAccountSerializer(storage_account)
             return Response(
                 {
@@ -153,7 +85,6 @@ class StorageAccountViewSet(ModelViewSet):
                 },
                 status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
             )
-
         except Exception as e:
             logger.error(f"Google OAuth callback failed: {str(e)}")
             return Response(

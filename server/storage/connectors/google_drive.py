@@ -1,5 +1,8 @@
 import io
+import json
 
+import google_auth_httplib2
+import requests as http_requests
 from django.utils import timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -31,8 +34,8 @@ class GoogleDriveConnector(BaseStorageConnector):
             token=self.storage_account.access_token,
             refresh_token=self.storage_account.refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id=self._get_client_id(),
-            client_secret=self._get_client_secret(),
+            client_id=EnvVariable.GOOGLE_CLIENT_ID.value,
+            client_secret=EnvVariable.GOOGLE_CLIENT_SECRET.value,
         )
 
     def _get_credentials(self) -> Credentials:
@@ -45,12 +48,6 @@ class GoogleDriveConnector(BaseStorageConnector):
 
         return creds
 
-    def _get_client_id(self) -> str:
-        return EnvVariable.GOOGLE_CLIENT_ID.value
-
-    def _get_client_secret(self) -> str:
-        return EnvVariable.GOOGLE_CLIENT_SECRET.value
-
     def _get_service(self):
         """Get or create Google Drive API service."""
         if self._service is None:
@@ -62,7 +59,6 @@ class GoogleDriveConnector(BaseStorageConnector):
         """Get or create the Endless Storage folder in the user's Drive."""
         service = self._get_service()
 
-        # Search for existing folder
         query = (
             f"name = '{ENDLESS_STORAGE_FOLDER_NAME}' "
             f"and mimeType = 'application/vnd.google-apps.folder' "
@@ -78,7 +74,6 @@ class GoogleDriveConnector(BaseStorageConnector):
         if files:
             return files[0]["id"]
 
-        # Create folder
         folder_metadata = {
             "name": ENDLESS_STORAGE_FOLDER_NAME,
             "mimeType": "application/vnd.google-apps.folder",
@@ -96,7 +91,6 @@ class GoogleDriveConnector(BaseStorageConnector):
             "parents": [folder_id],
         }
 
-        # Read file content into bytes if it's a file-like object
         if hasattr(file_content, "read"):
             content = file_content.read()
         else:
@@ -116,22 +110,7 @@ class GoogleDriveConnector(BaseStorageConnector):
 
         return file["id"]
 
-    def create_resumable_upload(
-        self, file_name: str, mime_type: str, origin: str = ""
-    ) -> str:
-        """
-        Initiate a resumable upload session with Google Drive.
-
-        Returns the resumable upload URI that the client can use to upload
-        the file directly to Google Drive.
-
-        The `origin` header is required so Google sets CORS headers on the
-        resumable upload URI, allowing direct browser uploads.
-        """
-        import json
-
-        import google_auth_httplib2
-
+    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> str:
         creds = self._get_credentials()
         folder_id = self._get_or_create_folder()
 
@@ -176,11 +155,8 @@ class GoogleDriveConnector(BaseStorageConnector):
         Stream a file from Google Drive in chunks.
         Returns (chunk_iterator, mime_type).
         """
-        import requests as req
-
         service = self._get_service()
 
-        # Get mime type
         file_metadata = (
             service.files().get(fileId=external_file_id, fields="mimeType").execute()
         )
@@ -191,14 +167,13 @@ class GoogleDriveConnector(BaseStorageConnector):
         )
         headers = {"Authorization": f"Bearer {self.storage_account.access_token}"}
 
-        response = req.get(download_url, headers=headers, stream=True)
+        response = http_requests.get(download_url, headers=headers, stream=True)
 
-        # If token is expired, refresh and retry
         if response.status_code == 401:
             response.close()
             self.refresh_credentials()
             headers["Authorization"] = f"Bearer {self.storage_account.access_token}"
-            response = req.get(download_url, headers=headers, stream=True)
+            response = http_requests.get(download_url, headers=headers, stream=True)
 
         response.raise_for_status()
 
@@ -216,23 +191,18 @@ class GoogleDriveConnector(BaseStorageConnector):
         service.files().delete(fileId=external_file_id).execute()
 
     def refresh_credentials(self) -> None:
-        """Refresh Google OAuth2 credentials."""
-        creds = Credentials(
-            token=self.storage_account.access_token,
-            refresh_token=self.storage_account.refresh_token,
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=self._get_client_id(),
-            client_secret=self._get_client_secret(),
-        )
-
+        """Refresh Google OAuth2 credentials and invalidate the cached service."""
+        creds = self._build_credentials()
         creds.refresh(Request())
 
-        # Update stored tokens
         self.storage_account.access_token = creds.token
         self.storage_account.token_expiry = timezone.now() + timezone.timedelta(
             seconds=3600
         )
         self.storage_account.save(update_fields=["access_token", "token_expiry"])
+
+        # Invalidate the cached service so it is rebuilt with the new credentials.
+        self._service = None
 
     def get_storage_quota(self) -> dict:
         """Get Google Drive storage quota using the About API."""
