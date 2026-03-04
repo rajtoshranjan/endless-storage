@@ -15,12 +15,12 @@ from chunking.utils import stream_as_async
 from drive.helpers import get_active_drive
 from endless_storage import logger
 from storage.connectors import get_connector
+from storage.services import get_account_quotas
 
-from ..helpers import get_all_account_quotas
 from ..models import File, FileChunk, FilePermission
 from ..permissions import (
-    HasManageFilePermission,
     HasDownloadFilePermission,
+    HasManageFilePermission,
     HasUploadFilePermission,
 )
 from ..serializers import FileSerializer, SharedFileSerializer
@@ -60,7 +60,7 @@ class FileViewSet(ModelViewSet):
 
         # Get quotas and compute allocation
         try:
-            account_quotas = get_all_account_quotas(request.user)
+            account_quotas = get_account_quotas(request.user)
         except ValueError as e:
             return Response(
                 {"error": str(e)},
@@ -105,9 +105,7 @@ class FileViewSet(ModelViewSet):
                 if len(allocation) > 1
                 else file_name
             )
-            upload_url = connector.get_upload_url(
-                chunk_name, mime_type, origin=origin
-            )
+            upload_url = connector.get_upload_url(chunk_name, mime_type, origin=origin)
 
             chunks.append(
                 {

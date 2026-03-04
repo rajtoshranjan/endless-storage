@@ -46,9 +46,7 @@ class TestFileEndpoints(BaseTestCase):
         )
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
-    @patch(
-        "storage.connectors.google_drive.GoogleDriveConnector.get_upload_url"
-    )
+    @patch("storage.connectors.google_drive.GoogleDriveConnector.get_upload_url")
     def test_init_upload(self, mock_upload_url, mock_quota):
         """Test init-upload returns chunk plan with upload URLs."""
         mock_quota.return_value = {
@@ -142,9 +140,7 @@ class TestFileEndpoints(BaseTestCase):
         mock_delete.assert_called_once_with("mock-external-id-123")
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
-    @patch(
-        "storage.connectors.google_drive.GoogleDriveConnector.get_upload_url"
-    )
+    @patch("storage.connectors.google_drive.GoogleDriveConnector.get_upload_url")
     def test_init_upload_multi_chunk(self, mock_upload_url, mock_quota):
         """Test init-upload distributes across multiple drives."""
         # Create a second storage account

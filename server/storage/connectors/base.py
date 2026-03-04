@@ -22,9 +22,7 @@ class BaseStorageConnector(ABC):
         """
 
     @abstractmethod
-    def get_upload_url(
-        self, file_name: str, mime_type: str, origin: str = ""
-    ) -> str:
+    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> str:
         """
         Return a URL the client can use to upload a file directly to the storage provider.
 

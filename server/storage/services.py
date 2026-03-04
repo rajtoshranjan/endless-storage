@@ -2,8 +2,10 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 
+from endless_storage import logger
 from endless_storage.env_variables import EnvVariable
 
+from .connectors import get_connector
 from .constants import StorageProvider
 from .models import StorageAccount
 
@@ -82,3 +84,36 @@ def connect_google_drive(user, code: str) -> tuple[StorageAccount, bool]:
         },
     )
     return storage_account, created
+
+
+def get_account_quotas(user) -> list[dict]:
+    """
+    Fetch storage quota information for all active storage accounts.
+
+    Returns:
+        List of dicts with keys:
+            - "account": StorageAccount instance
+            - "remaining": int (free bytes)
+
+    Raises:
+        ValueError: If no active accounts exist or none could be reached.
+    """
+    accounts = StorageAccount.objects.filter(user=user, is_active=True)
+
+    if not accounts.exists():
+        raise ValueError("No active storage accounts. Connect one in Settings.")
+
+    quotas = []
+    for account in accounts:
+        try:
+            connector = get_connector(account)
+            quota = connector.get_storage_quota()
+            remaining = quota.get("remaining", 0)
+            quotas.append({"account": account, "remaining": remaining})
+        except Exception as e:
+            logger.warning(f"Failed to check quota for {account}: {e}")
+
+    if not quotas:
+        raise ValueError("Could not retrieve quota from any storage account.")
+
+    return quotas
