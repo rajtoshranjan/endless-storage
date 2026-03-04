@@ -5,13 +5,13 @@ import {
   ScrollArea,
   Spinner,
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Button,
 } from '../../components/ui';
 import { toast } from '../../hooks/use-toast';
 import {
@@ -58,7 +58,7 @@ export function FileManagementPage({
   const { data: sharedFilesResponse, isLoading: isLoadingSharedFiles } =
     useGetSharedFiles(fileType === 'shared');
 
-  const { mutate: deleteFile } = useDeleteFile();
+  const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile();
   const { mutate: downloadFile } = useDownloadFile();
 
   // Constants
@@ -207,7 +207,9 @@ export function FileManagementPage({
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!fileToDelete}
-        onOpenChange={() => setFileToDelete(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) setFileToDelete(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -219,13 +221,19 @@ export function FileManagementPage({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => fileToDelete && handleDelete(fileToDelete)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (fileToDelete) handleDelete(fileToDelete);
+              }}
+              className="min-w-[80px]"
+              loading={isDeleting}
             >
               Delete
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
