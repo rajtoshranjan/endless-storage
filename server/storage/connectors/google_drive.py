@@ -7,6 +7,7 @@ from django.utils import timezone
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
 from endless_storage.env_variables import EnvVariable
@@ -142,24 +143,43 @@ class GoogleDriveConnector(BaseStorageConnector):
         return response["location"]
 
     def get_file_metadata(self, external_file_id: str) -> dict:
-        """Get file metadata (name, size, mimeType) from Google Drive."""
+        """
+        Get file metadata (name, size, mimeType) from Google Drive.
+        Raises FileNotFoundError if the file no longer exists on Drive.
+        """
         service = self._get_service()
-        return (
-            service.files()
-            .get(fileId=external_file_id, fields="id,name,size,mimeType")
-            .execute()
-        )
+        try:
+            return (
+                service.files()
+                .get(fileId=external_file_id, fields="id,name,size,mimeType")
+                .execute()
+            )
+        except HttpError as e:
+            if e.status_code == 404:
+                raise FileNotFoundError(
+                    f"File {external_file_id} not found in Google Drive"
+                )
+            raise
 
     def stream_file(self, external_file_id: str):
         """
         Stream a file from Google Drive in chunks.
         Returns (chunk_iterator, mime_type).
+        Raises FileNotFoundError if the file no longer exists on Drive.
         """
         service = self._get_service()
 
-        file_metadata = (
-            service.files().get(fileId=external_file_id, fields="mimeType").execute()
-        )
+        try:
+            file_metadata = (
+                service.files().get(fileId=external_file_id, fields="mimeType").execute()
+            )
+        except HttpError as e:
+            if e.status_code == 404:
+                raise FileNotFoundError(
+                    f"File {external_file_id} not found in Google Drive"
+                )
+            raise
+
         mime_type = file_metadata.get("mimeType", "application/octet-stream")
 
         download_url = (
@@ -174,6 +194,12 @@ class GoogleDriveConnector(BaseStorageConnector):
             self.refresh_credentials()
             headers["Authorization"] = f"Bearer {self.storage_account.access_token}"
             response = http_requests.get(download_url, headers=headers, stream=True)
+
+        if response.status_code == 404:
+            response.close()
+            raise FileNotFoundError(
+                f"File {external_file_id} not found in Google Drive"
+            )
 
         response.raise_for_status()
 

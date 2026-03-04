@@ -13,7 +13,11 @@ from rest_framework.viewsets import ModelViewSet
 
 from chunking.distributor import ChunkDistributor
 from chunking.downloader import ChunkDownloader
-from chunking.exceptions import InsufficientStorageError
+from chunking.exceptions import (
+    ChunkMissingError,
+    InsufficientStorageError,
+    StorageAccountDisconnectedError,
+)
 from chunking.utils import stream_as_async
 from drive.helpers import get_active_drive
 from endless_storage import logger
@@ -216,6 +220,21 @@ class FileViewSet(ModelViewSet):
         """
         file = self.get_object()
 
+        try:
+            ChunkDownloader().validate_chunks(file)
+        except StorageAccountDisconnectedError as e:
+            logger.error(f"Download token denied — storage account disconnected: {e}")
+            return Response(
+                {"error": "The storage account holding this file has been disconnected."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except ChunkMissingError as e:
+            logger.error(f"Download token denied — chunk missing from cloud storage: {e}")
+            return Response(
+                {"error": "This file's data is no longer available in cloud storage."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         token = self._download_signer.sign(str(file.id))
 
         download_url = request.build_absolute_uri(
@@ -262,15 +281,30 @@ class FileViewSet(ModelViewSet):
                 stream_as_async(sync_stream), content_type=file.mime_type
             )
             encoded_name = quote(file.name)
-            response[
-                "Content-Disposition"
-            ] = f"attachment; filename*=UTF-8''{encoded_name}"
+            response["Content-Disposition"] = (
+                f"attachment; filename*=UTF-8''{encoded_name}"
+            )
             if file.file_size:
                 response["Content-Length"] = file.file_size
             return response
+        except StorageAccountDisconnectedError as e:
+            logger.error(f"Download failed — storage account disconnected: {e}")
+            return Response(
+                {"error": "Storage account disconnected"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except ChunkMissingError as e:
+            logger.error(f"Download failed — chunk missing from cloud storage: {e}")
+            return Response(
+                {"error": "Chunk missing from cloud storage"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
-            logger.error(f"Failed to generate download URL for share link: {e}")
-            return render(request, "link_expired.html")
+            logger.error(f"Download failed unexpectedly: {e}")
+            return Response(
+                {"error": "Download failed unexpectedly"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     @action(
         detail=False,

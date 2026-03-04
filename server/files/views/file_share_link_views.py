@@ -11,6 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
 
 from chunking.downloader import ChunkDownloader
+from chunking.exceptions import ChunkMissingError, StorageAccountDisconnectedError
 from chunking.utils import stream_as_async
 from drive.constants import DriveMemberRole
 from endless_storage import logger
@@ -66,12 +67,12 @@ class FileShareLinkViewSet(ModelViewSet):
                 stream_as_async(sync_stream), content_type=file.mime_type
             )
             encoded_name = quote(file.name)
-            response[
-                "Content-Disposition"
-            ] = f"attachment; filename*=UTF-8''{encoded_name}"
+            response["Content-Disposition"] = (
+                f"attachment; filename*=UTF-8''{encoded_name}"
+            )
             if file.file_size:
                 response["Content-Length"] = file.file_size
             return response
         except Exception as e:
-            logger.error(f"Failed to generate download URL for share link: {e}")
+            logger.error(f"Share link download failed unexpectedly: {e}")
             return render(request, "link_expired.html")
