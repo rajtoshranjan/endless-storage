@@ -17,7 +17,6 @@ export function Layout() {
   const menuItems = [
     { path: '/', label: 'Files', show: true },
     { path: '/users', label: 'Users', show: canManageUsers },
-    { path: '/shared-with-me', label: 'Shared with me', show: true },
   ];
 
   // Hooks.
@@ -45,10 +44,36 @@ export function Layout() {
 
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Button
+                  variant={
+                    pathname === '/shared-with-me' ? 'secondary' : 'ghost'
+                  }
+                  onClick={() => navigate('/shared-with-me')}
+                  size="sm"
+                  className="hidden h-7 gap-2 rounded-full px-3 text-xs sm:flex sm:h-8 sm:text-sm"
+                >
+                  <CustomIcons.SharedWithMe className="size-3.5 sm:size-4" />
+                  Shared
+                </Button>
+                <Button
+                  variant={
+                    pathname === '/shared-with-me' ? 'secondary' : 'ghost'
+                  }
+                  onClick={() => navigate('/shared-with-me')}
+                  size="icon"
+                  className="size-7 rounded-full hover:bg-background/60 sm:hidden"
+                  title="Shared with me"
+                >
+                  <CustomIcons.SharedWithMe className="size-3.5 sm:size-4" />
+                </Button>
+
+                <div className="h-4 w-px bg-border max-sm:hidden" />
+
+                <Button
                   variant="ghost"
                   onClick={() => navigate('/settings')}
                   size="icon"
                   className="size-7 rounded-full hover:bg-background/60 sm:size-8"
+                  title="Settings"
                 >
                   <Settings className="size-3.5 sm:size-4" />
                 </Button>
