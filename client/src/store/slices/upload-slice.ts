@@ -1,44 +1,43 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-export type TransferJob = {
+export type UploadJob = {
   id: string;
   fileName: string;
   progress: number;
-  status: 'uploading' | 'downloading' | 'success' | 'error';
-  type: 'upload' | 'download';
+  status: 'uploading' | 'success' | 'error';
   totalChunks: number;
   completedChunks: number;
 };
 
-type TransferState = {
-  jobs: Record<string, TransferJob>;
+type UploadState = {
+  jobs: Record<string, UploadJob>;
   isWidgetVisible: boolean;
 };
 
-const initialState: TransferState = {
+const initialState: UploadState = {
   jobs: {},
   isWidgetVisible: false,
 };
 
-export const transferSlice = createSlice({
-  name: 'transfer',
+export const uploadSlice = createSlice({
+  name: 'upload',
   initialState,
   reducers: {
-    addTransferJob: (
+    addUploadJob: (
       state,
       action: PayloadAction<
-        Omit<TransferJob, 'progress' | 'status' | 'completedChunks'>
+        Omit<UploadJob, 'progress' | 'status' | 'completedChunks'>
       >,
     ) => {
       state.jobs[action.payload.id] = {
         ...action.payload,
         progress: 0,
-        status: action.payload.type === 'upload' ? 'uploading' : 'downloading',
+        status: 'uploading',
         completedChunks: 0,
       };
       state.isWidgetVisible = true;
     },
-    updateTransferProgress: (
+    updateUploadProgress: (
       state,
       action: PayloadAction<{ id: string; progress: number }>,
     ) => {
@@ -46,7 +45,7 @@ export const transferSlice = createSlice({
         state.jobs[action.payload.id].progress = action.payload.progress;
       }
     },
-    updateTransferChunkProgress: (
+    updateUploadChunkProgress: (
       state,
       action: PayloadAction<{
         id: string;
@@ -60,7 +59,7 @@ export const transferSlice = createSlice({
         state.jobs[action.payload.id].totalChunks = action.payload.totalChunks;
       }
     },
-    setTransferStatus: (
+    setUploadStatus: (
       state,
       action: PayloadAction<{ id: string; status: 'success' | 'error' }>,
     ) => {
@@ -71,7 +70,7 @@ export const transferSlice = createSlice({
         }
       }
     },
-    removeTransferJob: (state, action: PayloadAction<string>) => {
+    removeUploadJob: (state, action: PayloadAction<string>) => {
       delete state.jobs[action.payload];
       if (Object.keys(state.jobs).length === 0) {
         state.isWidgetVisible = false;
@@ -87,18 +86,18 @@ export const transferSlice = createSlice({
 });
 
 export const {
-  addTransferJob,
-  updateTransferProgress,
-  updateTransferChunkProgress,
-  setTransferStatus,
-  removeTransferJob,
+  addUploadJob,
+  updateUploadProgress,
+  updateUploadChunkProgress,
+  setUploadStatus,
+  removeUploadJob,
   toggleWidgetVisibility,
   closeWidget,
-} = transferSlice.actions;
+} = uploadSlice.actions;
 
-export const selectTransferJobs = (state: { transfer: TransferState }) =>
-  Object.values(state.transfer.jobs);
-export const selectIsWidgetVisible = (state: { transfer: TransferState }) =>
-  state.transfer.isWidgetVisible;
+export const selectUploadJobs = (state: { upload: UploadState }) =>
+  Object.values(state.upload.jobs);
+export const selectIsUploadWidgetVisible = (state: { upload: UploadState }) =>
+  state.upload.isWidgetVisible;
 
-export const transferReducer = transferSlice.reducer;
+export const uploadReducer = uploadSlice.reducer;

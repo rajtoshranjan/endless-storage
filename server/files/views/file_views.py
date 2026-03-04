@@ -3,7 +3,7 @@ from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404, render
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, NotAuthenticated
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -11,6 +11,7 @@ from rest_framework.viewsets import ModelViewSet
 from chunking.distributor import ChunkDistributor
 from chunking.downloader import ChunkDownloader
 from chunking.exceptions import InsufficientStorageError
+from chunking.utils import stream_as_async
 from drive.helpers import get_active_drive
 from endless_storage import logger
 from storage.connectors import get_connector
@@ -23,7 +24,6 @@ from ..permissions import (
     HasUploadFilePermission,
 )
 from ..serializers import FileSerializer, SharedFileSerializer
-from chunking.utils import stream_as_async
 
 
 class FileViewSet(ModelViewSet):

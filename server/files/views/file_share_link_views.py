@@ -10,12 +10,11 @@ from rest_framework.viewsets import ModelViewSet
 from chunking.downloader import ChunkDownloader
 from chunking.utils import stream_as_async
 from drive.constants import DriveMemberRole
+from endless_storage import logger
 
 from ..models import FileShareLink
 from ..permissions import CanManageFileShareLinkPermission, has_manage_file_permission
 from ..serializers import FileShareLinkSerializer
-
-from endless_storage import logger
 
 
 class FileShareLinkViewSet(ModelViewSet):
