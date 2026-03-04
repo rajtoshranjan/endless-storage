@@ -3,8 +3,8 @@ from unittest.mock import patch
 from django.urls import reverse
 from rest_framework import status
 
-from endless_storage.tests import BaseTestCase
 from chunking.distributor import ChunkDistributor
+from endless_storage.tests import BaseTestCase
 from storage.constants import StorageProvider
 from storage.models import StorageAccount
 
