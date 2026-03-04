@@ -171,7 +171,9 @@ class GoogleDriveConnector(BaseStorageConnector):
 
         try:
             file_metadata = (
-                service.files().get(fileId=external_file_id, fields="mimeType").execute()
+                service.files()
+                .get(fileId=external_file_id, fields="mimeType")
+                .execute()
             )
         except HttpError as e:
             if e.status_code == 404:

@@ -3,7 +3,7 @@ from urllib.parse import quote
 from django.conf import settings
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.http import StreamingHttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
@@ -225,11 +225,15 @@ class FileViewSet(ModelViewSet):
         except StorageAccountDisconnectedError as e:
             logger.error(f"Download token denied — storage account disconnected: {e}")
             return Response(
-                {"error": "The storage account holding this file has been disconnected."},
+                {
+                    "error": "The storage account holding this file has been disconnected."
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         except ChunkMissingError as e:
-            logger.error(f"Download token denied — chunk missing from cloud storage: {e}")
+            logger.error(
+                f"Download token denied — chunk missing from cloud storage: {e}"
+            )
             return Response(
                 {"error": "This file's data is no longer available in cloud storage."},
                 status=status.HTTP_409_CONFLICT,
@@ -281,9 +285,9 @@ class FileViewSet(ModelViewSet):
                 stream_as_async(sync_stream), content_type=file.mime_type
             )
             encoded_name = quote(file.name)
-            response["Content-Disposition"] = (
-                f"attachment; filename*=UTF-8''{encoded_name}"
-            )
+            response[
+                "Content-Disposition"
+            ] = f"attachment; filename*=UTF-8''{encoded_name}"
             if file.file_size:
                 response["Content-Length"] = file.file_size
             return response
