@@ -26,14 +26,20 @@ export function UploadWidget() {
   if (!isVisible) return null;
 
   const activeCount = jobs.filter((j) => j.status === 'uploading').length;
-  const isAllDone = jobs.length > 0 && activeCount === 0;
 
   // Header string logic similar to Google Drive
   let headerTitle = 'Uploads';
   if (activeCount > 0) {
     headerTitle = `Uploading ${activeCount} item${activeCount !== 1 ? 's' : ''}`;
-  } else if (isAllDone) {
-    headerTitle = `${jobs.length} upload${jobs.length !== 1 ? 's' : ''} complete`;
+  } else if (jobs.length > 0) {
+    const successCount = jobs.filter((j) => j.status === 'success').length;
+    const failedCount = jobs.length - successCount;
+
+    if (failedCount === 0) {
+      headerTitle = `${successCount} upload${successCount !== 1 ? 's' : ''} complete`;
+    } else {
+      headerTitle = `${successCount} complete, ${failedCount} failed`;
+    }
   }
 
   return (
