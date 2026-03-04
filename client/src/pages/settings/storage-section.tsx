@@ -1,13 +1,20 @@
 import { Cloud, CloudOff, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
-  ScrollArea,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  ScrollArea,
 } from '../../components/ui';
 import { toast } from '../../hooks/use-toast';
 import { cn, formatBytes } from '../../lib/utils';
@@ -44,6 +51,8 @@ const PROVIDER_META: Record<
 export function StorageSection() {
   const popupRef = useRef<Window | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [accountToDisconnect, setAccountToDisconnect] =
+    useState<StorageAccountData | null>(null);
 
   const {
     data: storageAccountsResponse,
@@ -53,7 +62,8 @@ export function StorageSection() {
 
   const { mutate: getOAuthUrl } = useGetOAuthUrl();
   const { mutate: connectStorageAccount } = useConnectStorageAccount();
-  const { mutate: disconnectAccount } = useDisconnectStorageAccount();
+  const { mutate: disconnectAccount, isPending: isDisconnecting } =
+    useDisconnectStorageAccount();
 
   const responseData = storageAccountsResponse?.data;
   const storageAccounts = responseData?.accounts || [];
@@ -135,6 +145,7 @@ export function StorageSection() {
     disconnectAccount(account.id, {
       onSuccess: () => {
         refetchAccounts();
+        setAccountToDisconnect(null);
         toast({
           title: 'Disconnected',
           description: `${PROVIDER_META[account.provider]?.label || account.provider} has been disconnected.`,
@@ -268,7 +279,7 @@ export function StorageSection() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDisconnect(account)}
+                      onClick={() => setAccountToDisconnect(account)}
                       className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="size-3" />
@@ -281,6 +292,50 @@ export function StorageSection() {
           )}
         </CardContent>
       </Card>
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog
+        open={!!accountToDisconnect}
+        onOpenChange={(open) => {
+          if (!isDisconnecting && !open) setAccountToDisconnect(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to disconnect{' '}
+              <span className="font-semibold">
+                {accountToDisconnect &&
+                  (PROVIDER_META[accountToDisconnect.provider]?.label ||
+                    accountToDisconnect.provider)}
+                {accountToDisconnect?.providerEmail
+                  ? ` (${accountToDisconnect.providerEmail})`
+                  : ''}
+              </span>
+              ? Once disconnected, you won&apos;t be able to use this storage
+              account for uploads or downloads.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDisconnecting}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={isDisconnecting}
+              onClick={(e) => {
+                e.preventDefault();
+                if (accountToDisconnect) handleDisconnect(accountToDisconnect);
+              }}
+              className="min-w-[100px]"
+              loading={isDisconnecting}
+            >
+              Disconnect
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
