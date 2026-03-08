@@ -25,6 +25,7 @@ from ..permissions import (
 )
 from ..serializers import (
     ConfirmChunkSerializer,
+    FileMoveSerializer,
     FileSerializer,
     InitUploadSerializer,
     SharedFileSerializer,
@@ -45,7 +46,14 @@ class FileViewSet(ModelViewSet):
 
     def get_queryset(self):
         drive = get_active_drive(self.request)
-        return File.objects.filter(drive=drive).prefetch_related("chunks")
+        qs = File.objects.filter(drive=drive).prefetch_related("chunks")
+        if self.action == "list":
+            folder_id = self.request.query_params.get("folder_id")
+            if folder_id:
+                qs = qs.filter(folder_id=folder_id)
+            else:
+                qs = qs.filter(folder__isnull=True)
+        return qs
 
     def perform_destroy(self, instance):
         for chunk in instance.chunks.filter(upload_status=ChunkStatus.UPLOADED):
@@ -173,6 +181,16 @@ class FileViewSet(ModelViewSet):
                 {"error": "Download failed unexpectedly"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=["post"])
+    def move(self, request, pk=None):
+        file = self.get_object()
+        serializer = FileMoveSerializer(
+            file, data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        file = serializer.save()
+        return Response(FileSerializer(file).data)
 
     @action(
         detail=False,

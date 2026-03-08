@@ -13,11 +13,13 @@ import {
 
 export type FileUploadProps = {
   onFileUploadSuccess: () => void;
+  folderId?: string | null;
   className?: string;
 };
 
 export const FileUpload = ({
   onFileUploadSuccess,
+  folderId = null,
   className,
 }: FileUploadProps) => {
   const dispatch = useAppDispatch();
@@ -45,6 +47,7 @@ export const FileUpload = ({
         await uploadFileAsync({
           file,
           jobId,
+          folderId,
           onProgress: (progress: number) => {
             dispatch(updateUploadProgress({ id: jobId, progress }));
           },

@@ -83,6 +83,7 @@ export type ShareLinkResponse = {
 
 export type UploadFilePayload = {
   file: File;
+  folderId?: string | null;
   onProgress?: (progress: number) => void;
   onChunkProgress?: (completedChunks: number, totalChunks: number) => void;
 };

@@ -17,6 +17,7 @@ class InitUploadSerializer(serializers.Serializer):
     file_name = serializers.CharField(required=True)
     file_size = serializers.IntegerField(default=0)
     mime_type = serializers.CharField(default="application/octet-stream")
+    folder_id = serializers.UUIDField(required=False, allow_null=True, default=None)
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -50,10 +51,21 @@ class InitUploadSerializer(serializers.Serializer):
         request = self.context.get("request")
         drive = get_active_drive(request)
 
+        folder = None
+        folder_id = validated_data.get("folder_id")
+        if folder_id:
+            from ..models import Folder
+
+            try:
+                folder = Folder.objects.get(id=folder_id, drive=drive)
+            except Folder.DoesNotExist:
+                pass
+
         file = File.objects.create(
             name=validated_data["file_name"],
             owner=request.user,
             drive=drive,
+            folder=folder,
             mime_type=validated_data["mime_type"],
             file_size=validated_data["file_size"],
             total_chunks=len(validated_data["allocation"]),
