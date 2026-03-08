@@ -1,11 +1,12 @@
 import { Settings } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
-import { selectActiveDrive } from '../../store/slices';
+import { selectActiveDrive, selectHasActiveUploads } from '../../store/slices';
 import { CustomIcons } from '../icons';
 import { Button } from '../ui/button';
 import { UploadWidget } from '../upload-widget';
 import { cn } from '../../lib/utils';
+import { useBeforeUnload } from '../../hooks';
 import { SelectDrive } from './select-drive';
 import { UserNav } from './user-nav';
 
@@ -19,9 +20,13 @@ export function Layout() {
     { path: '/users', label: 'Users', show: canManageUsers },
   ];
 
+  // Selectors.
+  const hasActiveUploads = useAppSelector(selectHasActiveUploads);
+
   // Hooks.
   const pathname = useLocation().pathname;
   const navigate = useNavigate();
+  useBeforeUnload(hasActiveUploads);
 
   return (
     <div className="min-h-screen bg-background">

@@ -102,5 +102,7 @@ export const selectUploadJobs = (state: { upload: UploadState }) =>
   Object.values(state.upload.jobs);
 export const selectIsUploadWidgetVisible = (state: { upload: UploadState }) =>
   state.upload.isWidgetVisible;
+export const selectHasActiveUploads = (state: { upload: UploadState }) =>
+  Object.values(state.upload.jobs).some((job) => job.status === 'uploading');
 
 export const uploadReducer = uploadSlice.reducer;
