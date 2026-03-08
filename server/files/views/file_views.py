@@ -24,6 +24,7 @@ from endless_storage import logger
 from storage.connectors import get_connector
 from storage.services import get_account_quotas
 
+from ..constants import ChunkStatus
 from ..models import File, FileChunk, FilePermission
 from ..permissions import (
     HasDownloadFilePermission,
@@ -172,12 +173,12 @@ class FileViewSet(ModelViewSet):
 
         chunk.external_chunk_id = external_chunk_id
         chunk.chunk_size = int(metadata.get("size", chunk.chunk_size))
-        chunk.upload_status = "uploaded"
+        chunk.upload_status = ChunkStatus.UPLOADED
         chunk.save(update_fields=["external_chunk_id", "chunk_size", "upload_status"])
 
         # Check if all chunks are uploaded
         total = file.total_chunks
-        uploaded = file.chunks.filter(upload_status="uploaded").count()
+        uploaded = file.chunks.filter(upload_status=ChunkStatus.UPLOADED).count()
         all_uploaded = uploaded == total
 
         response_data = {
@@ -194,7 +195,7 @@ class FileViewSet(ModelViewSet):
 
     def perform_destroy(self, instance):
         """Delete all chunks from cloud storage, then delete the file record."""
-        for chunk in instance.chunks.filter(upload_status="uploaded"):
+        for chunk in instance.chunks.filter(upload_status=ChunkStatus.UPLOADED):
             try:
                 connector = get_connector(chunk.storage_account)
                 connector.delete_file(chunk.external_chunk_id)

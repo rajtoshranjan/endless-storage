@@ -1,4 +1,4 @@
-from files.models import ChunkStatus
+from files.constants import ChunkStatus
 from storage.connectors import get_connector
 
 from .exceptions import ChunkMissingError, StorageAccountDisconnectedError

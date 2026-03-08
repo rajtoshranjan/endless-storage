@@ -9,7 +9,7 @@ from storage.constants import StorageProvider
 from storage.models import StorageAccount
 
 from ..models import File, FileChunk
-
+from ..constants import ChunkStatus
 
 class TestFileEndpoints(BaseTestCase):
     def setUp(self):
@@ -43,7 +43,7 @@ class TestFileEndpoints(BaseTestCase):
             storage_account=self.storage_account,
             external_chunk_id="mock-external-id-123",
             chunk_size=17,
-            upload_status="uploaded",
+            upload_status=ChunkStatus.UPLOADED,
         )
 
     @patch("storage.connectors.google_drive.GoogleDriveConnector.get_storage_quota")
@@ -97,7 +97,7 @@ class TestFileEndpoints(BaseTestCase):
             chunk_index=0,
             storage_account=self.storage_account,
             chunk_size=100,
-            upload_status="pending",
+            upload_status=ChunkStatus.PENDING,
         )
 
         mock_metadata.return_value = {"size": "100", "mimeType": "text/plain"}
@@ -117,7 +117,7 @@ class TestFileEndpoints(BaseTestCase):
         # Verify chunk was updated
         chunk.refresh_from_db()
         self.assertEqual(chunk.external_chunk_id, "new-external-id-456")
-        self.assertEqual(chunk.upload_status, "uploaded")
+        self.assertEqual(chunk.upload_status, ChunkStatus.UPLOADED)
 
     def test_list_files(self):
         """Test file listing endpoint."""
