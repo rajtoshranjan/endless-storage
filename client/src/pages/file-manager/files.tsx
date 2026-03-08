@@ -179,14 +179,14 @@ export function FileManagementPage({
       <PageHeader
         title={fileType === 'drive' ? 'My Files' : 'Shared with Me'}
         description={
-          fileType === 'drive'
-            ? "View and manage your drive's files and documents"
-            : 'Access files that others have shared with you'
+          fileType === 'shared'
+            ? 'Access files that others have shared with you'
+            : undefined
         }
       />
 
       <ScrollArea className="h-[calc(100dvh-14rem)] w-full  md:h-[calc(100dvh-16rem)]">
-        <div className="w-full py-4">
+        <div className="w-full">
           {/* Drive Files */}
           {fileType === 'drive' && (
             <>
