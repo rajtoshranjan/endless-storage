@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import {
+  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,14 @@ type FileCardProps = {
   onManagePermissions?: () => void;
 };
 
+const STATUS_BADGE: Record<
+  string,
+  { label: string; variant: 'warning' | 'destructive' }
+> = {
+  pending: { label: 'Incomplete', variant: 'warning' },
+  failed: { label: 'Failed', variant: 'destructive' },
+};
+
 export const FileCard: React.FC<FileCardProps> = ({
   file,
   onShare,
@@ -45,11 +54,17 @@ export const FileCard: React.FC<FileCardProps> = ({
   const { canManageFiles } = useAppSelector(selectActiveDrive);
 
   // Conditions.
-  const canDownloadFile = onDownload && file.canDownload !== false;
-  const canShareFile = canManageFiles && onShare && file.canShare !== false;
+  const isComplete = file.status === 'uploaded';
+  const canDownloadFile =
+    isComplete && onDownload && file.canDownload !== false;
+  const canShareFile =
+    isComplete && canManageFiles && onShare && file.canShare !== false;
   const canDeleteFile = canManageFiles && onDelete && file.canDelete !== false;
   const canManagePermissions =
-    canManageFiles && onManagePermissions && file.canShare !== false;
+    isComplete &&
+    canManageFiles &&
+    onManagePermissions &&
+    file.canShare !== false;
 
   const hasNoActions =
     !canDownloadFile &&
@@ -57,13 +72,20 @@ export const FileCard: React.FC<FileCardProps> = ({
     !canDeleteFile &&
     !canManagePermissions;
 
+  const statusBadge = STATUS_BADGE[file.status];
+
   return (
     <div
       key={file.id}
       className="group relative rounded-lg border bg-card p-3 transition-all hover:shadow-md"
     >
-      <div className="mb-2 flex size-8 items-center justify-center rounded-md border bg-background/50">
-        <FileIcon className="size-4 text-muted-foreground" />
+      <div className="mb-2 flex items-center gap-2">
+        <div className="flex size-8 items-center justify-center rounded-md border bg-background/50">
+          <FileIcon className="size-4 text-muted-foreground" />
+        </div>
+        {statusBadge && (
+          <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+        )}
       </div>
 
       <div className="space-y-0.5">

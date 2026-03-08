@@ -5,6 +5,7 @@ export type FileDataFromServer = {
   size: number;
   mime_type: string;
   total_chunks: number;
+  status: string;
   created_at: string;
   modified_at: string;
 };
@@ -40,6 +41,7 @@ export type FileData = {
   size: number;
   mimeType: string;
   totalChunks: number;
+  status: string;
   createdAt: string;
   modifiedAt: string;
 };

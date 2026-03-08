@@ -4,6 +4,8 @@ from ..models import File
 
 
 class FileSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(read_only=True)
+
     class Meta:
         model = File
         fields = [
@@ -12,6 +14,7 @@ class FileSerializer(serializers.ModelSerializer):
             "size",
             "mime_type",
             "total_chunks",
+            "status",
             "created_at",
             "modified_at",
         ]
@@ -21,6 +24,7 @@ class FileSerializer(serializers.ModelSerializer):
             "size",
             "mime_type",
             "total_chunks",
+            "status",
             "created_at",
             "modified_at",
         ]

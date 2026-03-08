@@ -33,6 +33,23 @@ class File(BaseModel):
     def size(self):
         return self.file_size
 
+    @property
+    def status(self):
+        chunks = self.chunks.all()
+
+        if not chunks.exists():
+            return ChunkStatus.PENDING
+
+        statuses = {c.upload_status for c in chunks}
+
+        if ChunkStatus.FAILED in statuses:
+            return ChunkStatus.FAILED
+
+        if ChunkStatus.PENDING in statuses:
+            return ChunkStatus.PENDING
+
+        return ChunkStatus.UPLOADED
+
 
 class FileChunk(BaseModel):
     file = models.ForeignKey(File, on_delete=models.CASCADE, related_name="chunks")

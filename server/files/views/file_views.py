@@ -45,7 +45,7 @@ class FileViewSet(ModelViewSet):
 
     def get_queryset(self):
         drive = get_active_drive(self.request)
-        return File.objects.filter(drive=drive)
+        return File.objects.filter(drive=drive).prefetch_related("chunks")
 
     def perform_destroy(self, instance):
         for chunk in instance.chunks.filter(upload_status=ChunkStatus.UPLOADED):
@@ -88,13 +88,13 @@ class FileViewSet(ModelViewSet):
         url_path="download-token",
     )
     def download_token(self, request, pk=None):
-        """
-        Issue a signed, short-lived download token for browser-native downloads.
-
-        The token is signed with Django's SECRET_KEY via TimestampSigner
-        and embeds the file ID. It expires after DOWNLOAD_TOKEN_MAX_AGE seconds.
-        """
         file = self.get_object()
+
+        if file.status != ChunkStatus.UPLOADED:
+            return Response(
+                {"error": "File upload is not complete."},
+                status=status.HTTP_409_CONFLICT,
+            )
 
         try:
             ChunkDownloader().validate_chunks(file)
