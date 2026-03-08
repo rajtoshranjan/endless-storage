@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import StorageAccount
+from ..models import StorageAccount
 
 
 class StorageAccountSerializer(serializers.ModelSerializer):

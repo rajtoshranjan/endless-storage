@@ -8,8 +8,8 @@ from endless_storage import logger
 from storage.connectors import get_connector
 
 from .models import StorageAccount
-from .serializers import StorageAccountSerializer
-from .services import connect_google_drive, get_google_oauth_url
+from .serializers import GoogleAuthCallbackSerializer, StorageAccountSerializer
+from .services import get_google_oauth_url
 
 
 class StorageAccountViewSet(ModelViewSet):
@@ -58,7 +58,6 @@ class StorageAccountViewSet(ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="google-auth-url")
     def google_auth_url(self, request):
-        """Generate Google OAuth2 authorization URL."""
         authorization_url, state = get_google_oauth_url()
         return Response(
             {"url": authorization_url, "state": state},
@@ -67,27 +66,17 @@ class StorageAccountViewSet(ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="google-callback")
     def google_callback(self, request):
-        """Exchange authorization code for tokens and create StorageAccount."""
-        code = request.data.get("code")
-        if not code:
-            return Response(
-                {"error": "Authorization code is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        serializer = GoogleAuthCallbackSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        storage_account, created = serializer.save()
 
-        try:
-            storage_account, created = connect_google_drive(request.user, code)
-            serializer = StorageAccountSerializer(storage_account)
-            return Response(
-                {
-                    "message": "Google Drive connected successfully",
-                    "data": serializer.data,
-                },
-                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
-            )
-        except Exception as e:
-            logger.error(f"Google OAuth callback failed: {str(e)}")
-            return Response(
-                {"error": "Failed to connect Google Drive. Please try again."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        storage_serializer = StorageAccountSerializer(storage_account)
+        return Response(
+            {
+                "message": "Google Drive connected successfully",
+                "data": storage_serializer.data,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
