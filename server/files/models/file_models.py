@@ -1,3 +1,4 @@
+import django.core.serializers.python
 from django.conf import settings
 from django.db import models
 
@@ -22,10 +23,10 @@ class File(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["name", "owner"],
-                name="unique_file_name_owner",
-                violation_error_message="A file with this name already exists",
-                violation_error_code="unique_file_name_owner",
+                fields=["name", "drive"],
+                name="unique_file_name_drive",
+                violation_error_message="A file with this name already exists in this drive",
+                violation_error_code="unique_file_name_drive",
             )
         ]
 
