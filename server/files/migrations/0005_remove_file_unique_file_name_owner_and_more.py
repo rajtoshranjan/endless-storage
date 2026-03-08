@@ -7,18 +7,23 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('drive', '0001_initial'),
-        ('files', '0004_file_chunking'),
+        ("drive", "0001_initial"),
+        ("files", "0004_file_chunking"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='file',
-            name='unique_file_name_owner',
+            model_name="file",
+            name="unique_file_name_owner",
         ),
         migrations.AddConstraint(
-            model_name='file',
-            constraint=models.UniqueConstraint(fields=('name', 'drive'), name='unique_file_name_drive', violation_error_code='unique_file_name_drive', violation_error_message='A file with this name already exists in this drive'),
+            model_name="file",
+            constraint=models.UniqueConstraint(
+                fields=("name", "drive"),
+                name="unique_file_name_drive",
+                violation_error_code="unique_file_name_drive",
+                violation_error_message="A file with this name already exists in this drive",
+            ),
         ),
     ]
