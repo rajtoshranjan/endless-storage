@@ -8,8 +8,9 @@ from endless_storage.tests import BaseTestCase
 from storage.constants import StorageProvider
 from storage.models import StorageAccount
 
-from ..models import File, FileChunk
 from ..constants import ChunkStatus
+from ..models import File, FileChunk
+
 
 class TestFileEndpoints(BaseTestCase):
     def setUp(self):

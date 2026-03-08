@@ -1,9 +1,12 @@
-from rest_framework.permissions import IsAuthenticated
+from django.core.signing import BadSignature, SignatureExpired
+from rest_framework.permissions import BasePermission, IsAuthenticated
 
 from accounts.models import User
 from drive.constants import DriveMemberRole
 from drive.helpers import get_active_drive
+from endless_storage import logger
 
+from .constants import DOWNLOAD_SIGNER, DOWNLOAD_TOKEN_MAX_AGE
 from .models import File, FilePermission, FileShareLink
 
 
@@ -84,3 +87,31 @@ class CanManageFileShareLinkPermission(IsAuthenticated):
 class CanManageFileAccessPermission(IsAuthenticated):
     def has_object_permission(self, request, view, file_permission: FilePermission):
         return has_manage_file_permission(file_permission.file, request.user)
+
+
+class IsValidDownloadToken(BasePermission):
+    """
+    Validates that a download request has a valid token.
+    """
+
+    def has_permission(self, request, view):
+        token = request.query_params.get("token")
+        if not token:
+            logger.error("Download token is required")
+            return False
+
+        try:
+            pk = view.kwargs.get("pk")
+            file_id = DOWNLOAD_SIGNER.unsign(token, max_age=DOWNLOAD_TOKEN_MAX_AGE)
+        except SignatureExpired:
+            logger.error("Download token has expired")
+            return False
+        except BadSignature:
+            logger.error("Invalid download token")
+            return False
+
+        if str(pk) != file_id:
+            logger.error("Token does not match this file")
+            return False
+
+        return True
