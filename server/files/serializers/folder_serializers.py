@@ -72,7 +72,9 @@ class FolderMoveSerializer(serializers.Serializer):
 
             if folder.is_ancestor_of(new_parent):
                 raise serializers.ValidationError(
-                    {"parent_id": "Cannot move a folder into one of its own subfolders."}
+                    {
+                        "parent_id": "Cannot move a folder into one of its own subfolders."
+                    }
                 )
 
             attrs["new_parent"] = new_parent
