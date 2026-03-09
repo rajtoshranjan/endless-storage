@@ -40,6 +40,6 @@ const driveSlice = createSlice({
 // Selectors
 export const selectActiveDrive = (state: { drive: DriveState }) => state.drive;
 
-export const { setActiveDrive } = driveSlice.actions;
+export const { setActiveDrive, resetActiveDrive } = driveSlice.actions;
 
 export const driveReducer = driveSlice.reducer;

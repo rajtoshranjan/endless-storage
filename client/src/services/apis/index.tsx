@@ -1,6 +1,7 @@
 export * from './auth';
 export * from './enums';
 export * from './files';
+export * from './folders';
 export * from './helpers';
 export * from './setup';
 export { default as api } from './setup';

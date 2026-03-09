@@ -4,6 +4,7 @@ import {
   File as FileIcon,
   Info,
   MoreVertical,
+  MoveRight,
   Share2,
   Trash2,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ type FileCardProps = {
   onDelete?: () => void;
   onDownload?: () => void;
   onManagePermissions?: () => void;
+  onMove?: () => void;
 };
 
 const STATUS_BADGE: Record<
@@ -49,6 +51,7 @@ export const FileCard: React.FC<FileCardProps> = ({
   onDelete,
   onDownload,
   onManagePermissions,
+  onMove,
 }) => {
   // Selectors.
   const { canManageFiles } = useAppSelector(selectActiveDrive);
@@ -59,6 +62,7 @@ export const FileCard: React.FC<FileCardProps> = ({
     isComplete && onDownload && file.canDownload !== false;
   const canShareFile =
     isComplete && canManageFiles && onShare && file.canShare !== false;
+  const canMoveFile = isComplete && canManageFiles && onMove;
   const canDeleteFile = canManageFiles && onDelete && file.canDelete !== false;
   const canManagePermissions =
     isComplete &&
@@ -69,6 +73,7 @@ export const FileCard: React.FC<FileCardProps> = ({
   const hasNoActions =
     !canDownloadFile &&
     !canShareFile &&
+    !canMoveFile &&
     !canDeleteFile &&
     !canManagePermissions;
 
@@ -133,6 +138,12 @@ export const FileCard: React.FC<FileCardProps> = ({
               <DropdownMenuItem onClick={onManagePermissions} className="gap-2">
                 <Info className="size-4" />
                 Manage Access
+              </DropdownMenuItem>
+            )}
+            {canMoveFile && (
+              <DropdownMenuItem onClick={onMove} className="gap-2">
+                <MoveRight className="size-4" />
+                Move
               </DropdownMenuItem>
             )}
             {canDeleteFile && (

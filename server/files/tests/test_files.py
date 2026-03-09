@@ -216,4 +216,4 @@ class TestFileEndpoints(BaseTestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", response.data)
+        self.assertIn("error", response.json()["data"])

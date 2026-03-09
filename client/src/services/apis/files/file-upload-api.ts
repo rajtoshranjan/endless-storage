@@ -55,6 +55,7 @@ export const uploadFileRequest = async (
         file_name: payload.file.name,
         file_size: payload.file.size,
         mime_type: payload.file.type || 'application/octet-stream',
+        folder_id: payload.folderId ?? null,
       },
       { signal },
     );

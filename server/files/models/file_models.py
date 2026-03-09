@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from endless_storage.models import BaseModel
 from storage.models import StorageAccount
@@ -15,6 +16,13 @@ class File(BaseModel):
     drive = models.ForeignKey(
         "drive.Drive", on_delete=models.CASCADE, related_name="files"
     )
+    folder = models.ForeignKey(
+        "files.Folder",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="files",
+    )
     mime_type = models.CharField(max_length=127, default="application/octet-stream")
     file_size = models.BigIntegerField(default=0)
     total_chunks = models.PositiveIntegerField(default=0)
@@ -23,10 +31,16 @@ class File(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["name", "drive"],
-                name="unique_file_name_drive",
-                violation_error_message="A file with this name already exists in this drive",
-                violation_error_code="unique_file_name_drive",
-            )
+                condition=Q(folder__isnull=True),
+                name="unique_root_file_name_drive",
+                violation_error_message="A file with this name already exists in this drive.",
+            ),
+            models.UniqueConstraint(
+                fields=["name", "folder"],
+                condition=Q(folder__isnull=False),
+                name="unique_folder_file_name",
+                violation_error_message="A file with this name already exists in this folder.",
+            ),
         ]
 
     @property
