@@ -1,9 +1,9 @@
-import { Check, Folder as FolderIcon } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Button,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -11,13 +11,12 @@ import {
 import {
   FolderData,
   handleResponseErrorMessage,
-  useGetFolders,
   useMoveFolder,
 } from '../../services/apis';
 import { useAppSelector } from '../../store/hooks';
 import { selectActiveDrive } from '../../store/slices';
 import { toast } from '../../hooks';
-import { cn } from '../../lib/utils';
+import { FolderPicker, PickerPathItem } from './folder-picker';
 
 type Props = {
   open: boolean;
@@ -33,22 +32,30 @@ export const MoveFolderDialog: React.FC<Props> = ({
   onSuccess,
 }) => {
   const { activeDriveId } = useAppSelector(selectActiveDrive);
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
-  const { data: foldersResponse } = useGetFolders(
-    activeDriveId ?? '',
-    null,
-    open,
-  );
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [path, setPath] = useState<PickerPathItem[]>([]);
   const { mutate: moveFolder, isPending } = useMoveFolder();
 
-  const availableFolders = (foldersResponse?.data ?? []).filter(
-    (f) => f.id !== folder?.id,
-  );
+  // Reset navigation when dialog opens
+  useEffect(() => {
+    if (open) {
+      setCurrentFolderId(null);
+      setPath([]);
+    }
+  }, [open]);
+
+  const handleNavigate = (
+    folderId: string | null,
+    newPath: PickerPathItem[],
+  ) => {
+    setCurrentFolderId(folderId);
+    setPath(newPath);
+  };
 
   const handleMove = () => {
     if (!folder) return;
     moveFolder(
-      { id: folder.id, parentId: selectedParentId },
+      { id: folder.id, parentId: currentFolderId },
       {
         onSuccess: () => {
           onOpenChange(false);
@@ -60,6 +67,9 @@ export const MoveFolderDialog: React.FC<Props> = ({
     );
   };
 
+  const destinationLabel =
+    path.length > 0 ? path[path.length - 1].name : 'My Drive';
+
   return (
     <Dialog
       open={open}
@@ -67,54 +77,41 @@ export const MoveFolderDialog: React.FC<Props> = ({
         if (!isPending) onOpenChange(o);
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Move &quot;{folder?.name}&quot;</DialogTitle>
+          <DialogDescription>
+            Browse to a destination folder, then click Move Here.
+          </DialogDescription>
         </DialogHeader>
-        <div className="max-h-60 space-y-1 overflow-y-auto py-2">
-          <button
-            type="button"
-            className={cn(
-              'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent',
-              selectedParentId === null && 'bg-accent',
-            )}
-            onClick={() => setSelectedParentId(null)}
-          >
-            {selectedParentId === null && <Check className="size-4 shrink-0" />}
-            <span className={selectedParentId !== null ? 'pl-6' : ''}>
-              Root (My Drive)
+
+        <FolderPicker
+          driveId={activeDriveId ?? ''}
+          excludeFolderId={folder?.id}
+          currentFolderId={currentFolderId}
+          path={path}
+          onNavigate={handleNavigate}
+        />
+
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center">
+          <p className="flex-1 truncate text-xs text-muted-foreground">
+            Moving to:{' '}
+            <span className="font-medium text-foreground">
+              {destinationLabel}
             </span>
-          </button>
-          {availableFolders.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={cn(
-                'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent',
-                selectedParentId === f.id && 'bg-accent',
-              )}
-              onClick={() => setSelectedParentId(f.id)}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              disabled={isPending}
+              onClick={() => onOpenChange(false)}
             >
-              {selectedParentId === f.id ? (
-                <Check className="size-4 shrink-0" />
-              ) : (
-                <FolderIcon className="size-4 shrink-0 text-yellow-500" />
-              )}
-              {f.name}
-            </button>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleMove} loading={isPending}>
-            Move Here
-          </Button>
+              Cancel
+            </Button>
+            <Button onClick={handleMove} loading={isPending}>
+              Move Here
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
