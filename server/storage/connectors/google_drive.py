@@ -12,9 +12,8 @@ from googleapiclient.http import MediaIoBaseUpload
 
 from endless_storage.env_variables import EnvVariable
 
+from ..constants import ENDLESS_STORAGE_FOLDER_NAME
 from .base import BaseStorageConnector
-
-ENDLESS_STORAGE_FOLDER_NAME = "Endless Storage"
 
 
 class GoogleDriveConnector(BaseStorageConnector):
@@ -35,8 +34,8 @@ class GoogleDriveConnector(BaseStorageConnector):
             token=self.storage_account.access_token,
             refresh_token=self.storage_account.refresh_token,
             token_uri="https://oauth2.googleapis.com/token",
-            client_id=EnvVariable.GOOGLE_CLIENT_ID.value,
-            client_secret=EnvVariable.GOOGLE_CLIENT_SECRET.value,
+            client_id=EnvVariable.GOOGLE_DRIVE_CLIENT_ID.value,
+            client_secret=EnvVariable.GOOGLE_DRIVE_CLIENT_SECRET.value,
         )
 
     def _get_credentials(self) -> Credentials:

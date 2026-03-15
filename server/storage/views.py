@@ -7,9 +7,20 @@ from rest_framework.viewsets import ModelViewSet
 from endless_storage import logger
 from storage.connectors import get_connector
 
+from .constants import StorageProvider
 from .models import StorageAccount
-from .serializers import GoogleAuthCallbackSerializer, StorageAccountSerializer
-from .services import get_google_oauth_url
+from .serializers import OAuthCallbackSerializer, StorageAccountSerializer
+from .services import (
+    get_dropbox_oauth_url,
+    get_google_oauth_url,
+    get_onedrive_oauth_url,
+)
+
+_AUTH_URL_FN = {
+    StorageProvider.GOOGLE_DRIVE.value: get_google_oauth_url,
+    StorageProvider.ONEDRIVE.value: get_onedrive_oauth_url,
+    StorageProvider.DROPBOX.value: get_dropbox_oauth_url,
+}
 
 
 class StorageAccountViewSet(ModelViewSet):
@@ -56,27 +67,35 @@ class StorageAccountViewSet(ModelViewSet):
         instance.is_active = False
         instance.save(update_fields=["is_active"])
 
-    @action(detail=False, methods=["get"], url_path="google-auth-url")
-    def google_auth_url(self, request):
-        authorization_url, state = get_google_oauth_url()
-        return Response(
-            {"url": authorization_url, "state": state},
-            status=status.HTTP_200_OK,
-        )
+    @action(detail=False, methods=["get"], url_path="auth-url")
+    def auth_url(self, request):
+        """GET /storage/auth-url/?provider=<provider>"""
+        provider = request.query_params.get("provider")
+        get_url_fn = _AUTH_URL_FN.get(provider)
 
-    @action(detail=False, methods=["post"], url_path="google-callback")
-    def google_callback(self, request):
-        serializer = GoogleAuthCallbackSerializer(
+        if not get_url_fn:
+            valid = ", ".join(_AUTH_URL_FN.keys())
+            return Response(
+                {"error": f"Invalid provider. Must be one of: {valid}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        authorization_url, state = get_url_fn()
+        return Response({"url": authorization_url, "state": state})
+
+    @action(detail=False, methods=["post"], url_path="callback")
+    def callback(self, request):
+        """POST /storage/callback/ — body: { provider, code }"""
+        serializer = OAuthCallbackSerializer(
             data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
         storage_account, created = serializer.save()
 
-        storage_serializer = StorageAccountSerializer(storage_account)
         return Response(
             {
-                "message": "Google Drive connected successfully",
-                "data": storage_serializer.data,
+                "message": f"{storage_account.provider} connected successfully",
+                "data": StorageAccountSerializer(storage_account).data,
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
