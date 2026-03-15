@@ -18,12 +18,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Spinner,
   ScrollArea,
   AlertDialog,
@@ -196,69 +190,60 @@ export function UsersPage() {
       />
 
       <ScrollArea className="h-[calc(100dvh-18rem)] w-full md:h-[calc(100dvh-16rem)]">
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader className="bg-secondary/50">
-              <TableRow className="h-12">
-                <TableHead>
-                  <div className="flex items-center gap-2 pl-1">
-                    <Users className="size-4" />
-                    User
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Shield className="size-4" />
-                    Role
-                  </div>
-                </TableHead>
-                <TableHead className="w-[100px]">
-                  <div className="flex items-center gap-2">
-                    <Settings className="size-4" />
-                    Actions
-                  </div>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isPending ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-center">
-                    <div className="flex justify-center">
-                      <Spinner />
+        <div className="rounded-lg border bg-card">
+          <div className="hidden items-center gap-4 border-b bg-secondary/50 px-4 py-3 text-sm font-medium text-muted-foreground md:flex">
+            <div className="flex flex-1 items-center gap-2">
+              <Users className="size-4" />
+              User
+            </div>
+            <div className="flex w-[150px] items-center gap-2">
+              <Shield className="size-4" />
+              Role
+            </div>
+            <div className="flex w-[60px] items-center justify-end gap-2 pr-2">
+              <Settings className="size-4" />
+              <span className="sr-only">Actions</span>
+            </div>
+          </div>
+
+          <div className="divide-y">
+            {isPending ? (
+              <div className="flex justify-center p-8">
+                <Spinner />
+              </div>
+            ) : membersResponse?.data.length === 0 ? (
+              <div className="flex justify-center p-8 text-sm text-muted-foreground">
+                No members found
+              </div>
+            ) : (
+              membersResponse?.data.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/50 md:flex-row md:items-center"
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary">
+                      <User className="size-5 text-secondary-foreground" />
                     </div>
-                  </TableCell>
-                </TableRow>
-              ) : membersResponse?.data.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center">
-                    No members found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                membersResponse?.data.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-full bg-secondary">
-                          <User className="size-5 text-secondary-foreground" />
-                        </div>
-                        <div>
-                          <div className="font-medium">{member.userName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.userEmail}
-                          </div>
-                        </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">
+                        {member.userName}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                      <div className="truncate text-sm text-muted-foreground">
+                        {member.userEmail}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4 md:justify-start">
+                    <div className="shrink-0 md:w-[150px]">
                       <Select
                         defaultValue={member.role}
                         onValueChange={(value) =>
                           handleUpdateRole(member.id, value as DriveRole)
                         }
                       >
-                        <SelectTrigger className="w-[130px]">
+                        <SelectTrigger className="h-9 w-[130px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -267,22 +252,24 @@ export function UsersPage() {
                           <SelectItem value="guest">Guest</SelectItem>
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                    <div className="flex shrink-0 justify-end md:w-[60px]">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setMemberToDelete(member.id)}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        className="size-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="Remove member"
                       >
                         <Trash2 className="size-4" />
+                        <span className="sr-only">Delete</span>
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </ScrollArea>
 
