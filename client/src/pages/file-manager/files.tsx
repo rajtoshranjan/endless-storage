@@ -191,7 +191,7 @@ export function FileManagementPage({
           {fileType === 'drive' && (
             <>
               {/* Toolbar: breadcrumb + new folder button — always visible */}
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex min-w-0 items-center gap-2">
                 <FolderBreadcrumb
                   path={folderPath}
                   onNavigate={handleBreadcrumbNavigate}
@@ -201,7 +201,7 @@ export function FileManagementPage({
                     variant="outline"
                     size="sm"
                     onClick={() => setIsCreateFolderOpen(true)}
-                    className="ml-auto gap-2"
+                    className="ml-auto shrink-0 gap-2"
                   >
                     <FolderPlus className="size-4" />
                     New Folder
