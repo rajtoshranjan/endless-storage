@@ -93,7 +93,7 @@ class DropboxConnector(BaseStorageConnector):
         response.raise_for_status()
         return response.json()["id"]
 
-    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> str:
+    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> dict:
         """Get a temporary upload link so the client can upload directly to Dropbox."""
         self._ensure_folder_exists()
         response = requests.post(
@@ -109,7 +109,12 @@ class DropboxConnector(BaseStorageConnector):
             },
         )
         response.raise_for_status()
-        return response.json()["link"]
+        return {
+            "url": response.json()["link"],
+            "method": "POST",
+            "content_type": "application/octet-stream",
+            "external_id": f"{FOLDER_PATH}/{file_name}",
+        }
 
     def get_file_metadata(self, external_file_id: str) -> dict:
         """

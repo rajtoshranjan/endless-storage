@@ -101,7 +101,7 @@ class OneDriveConnector(BaseStorageConnector):
         response.raise_for_status()
         return response.json()["id"]
 
-    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> str:
+    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> dict:
         """Create an upload session so the client can upload directly to OneDrive."""
         self._get_or_create_folder()
         response = requests.post(
@@ -110,7 +110,12 @@ class OneDriveConnector(BaseStorageConnector):
             json={"item": {"@microsoft.graph.conflictBehavior": "rename"}},
         )
         response.raise_for_status()
-        return response.json()["uploadUrl"]
+        return {
+            "url": response.json()["uploadUrl"],
+            "method": "PUT",
+            "content_type": None,
+            "external_id": None,
+        }
 
     def get_file_metadata(self, external_file_id: str) -> dict:
         response = requests.get(
