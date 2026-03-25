@@ -93,6 +93,9 @@ export type ChunkPlan = {
   chunk_index: number;
   chunk_size: number;
   upload_url: string;
+  upload_method: 'PUT' | 'POST';
+  content_type?: string | null;
+  external_id?: string | null;
 };
 
 export type InitUploadResponse = {

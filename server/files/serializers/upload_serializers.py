@@ -86,14 +86,17 @@ class InitUploadSerializer(serializers.Serializer):
                 if len(validated_data["allocation"]) > 1
                 else file.name
             )
-            upload_url = connector.get_upload_url(
+            upload_info = connector.get_upload_url(
                 chunk_name, file.mime_type, origin=validated_data["origin"]
             )
 
             chunks.append(
                 {
                     "chunk_index": entry["chunk_index"],
-                    "upload_url": upload_url,
+                    "upload_url": upload_info["url"],
+                    "upload_method": upload_info["method"],
+                    "content_type": upload_info.get("content_type"),
+                    "external_id": upload_info.get("external_id"),
                     "chunk_size": entry["chunk_size"],
                 }
             )

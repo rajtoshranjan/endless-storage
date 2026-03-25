@@ -23,7 +23,7 @@ No local persistence. No storage limits tied to a single provider. Just distribu
   The backend never stores files on disk. All operations are streamed.
 
 - **Provider-Agnostic Architecture**
-  Modular connector layer allows adding new providers (OneDrive, Dropbox, etc.) in the future.
+  Modular connector layer supports Google Drive, OneDrive, and Dropbox — with a single unified OAuth flow.
 
 ---
 

@@ -17,7 +17,17 @@ class EnvVariable(Enum):
     DB_HOST = os.environ["DB_HOST"]
     DB_PORT = os.environ["DB_PORT"]
 
-    # Google OAuth Variables.
-    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-    GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-    GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+    # Shared OAuth redirect URI (all providers use the same callback page).
+    OAUTH_REDIRECT_URI = os.getenv("OAUTH_REDIRECT_URI", "")
+
+    # Google Drive OAuth credentials.
+    GOOGLE_DRIVE_CLIENT_ID = os.getenv("GOOGLE_DRIVE_CLIENT_ID", "")
+    GOOGLE_DRIVE_CLIENT_SECRET = os.getenv("GOOGLE_DRIVE_CLIENT_SECRET", "")
+
+    # OneDrive OAuth credentials.
+    ONEDRIVE_CLIENT_ID = os.getenv("ONEDRIVE_CLIENT_ID", "")
+    ONEDRIVE_CLIENT_SECRET = os.getenv("ONEDRIVE_CLIENT_SECRET", "")
+
+    # Dropbox OAuth credentials.
+    DROPBOX_CLIENT_ID = os.getenv("DROPBOX_CLIENT_ID", "")
+    DROPBOX_CLIENT_SECRET = os.getenv("DROPBOX_CLIENT_SECRET", "")

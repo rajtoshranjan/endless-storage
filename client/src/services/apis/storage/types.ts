@@ -1,4 +1,4 @@
-export type StorageProvider = 'google_drive';
+export type StorageProvider = 'google_drive' | 'onedrive' | 'dropbox';
 
 // Server response types
 export type StorageAccountDataFromServer = {
@@ -37,8 +37,4 @@ export type StorageAccountsResponse = {
 export type OAuthUrlResponse = {
   url: string;
   state: string;
-};
-
-export type OAuthCallbackPayload = {
-  code: string;
 };
