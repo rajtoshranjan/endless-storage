@@ -4,14 +4,26 @@ import api from '../setup';
 import { apiDataResponseMapper } from '../utils';
 import {
   OAuthUrlResponse,
-  OAuthCallbackPayload,
   StorageAccountData,
   StorageAccountDataFromServer,
   StorageAccountsListFromServer,
   StorageAccountsResponse,
+  StorageProvider,
 } from './types';
 
-// API Functions
+// ---------------------------------------------------------------------------
+// Request types
+// ---------------------------------------------------------------------------
+
+export type OAuthCallbackPayload = {
+  provider: StorageProvider;
+  code: string;
+};
+
+// ---------------------------------------------------------------------------
+// API functions
+// ---------------------------------------------------------------------------
+
 export const getStorageAccountsRequest = async (): Promise<
   ApiResponse<StorageAccountsResponse>
 > => {
@@ -35,15 +47,12 @@ export const getStorageAccountsRequest = async (): Promise<
 
 export const disconnectStorageAccountRequest = async (
   id: string,
-): Promise<ApiResponse<void>> => {
-  return api.delete(`/storage/${id}/`);
-};
+): Promise<ApiResponse<void>> => api.delete(`/storage/${id}/`);
 
-export const getOAuthUrlRequest = async (): Promise<
-  ApiResponse<OAuthUrlResponse>
-> => {
-  return api.get('/storage/google-auth-url/');
-};
+export const getOAuthUrlRequest = async (
+  provider: StorageProvider,
+): Promise<ApiResponse<OAuthUrlResponse>> =>
+  api.get(`/storage/auth-url/?provider=${provider}`);
 
 export const connectStorageAccountRequest = async (
   payload: OAuthCallbackPayload,
@@ -51,8 +60,7 @@ export const connectStorageAccountRequest = async (
   const response = await api.post<
     StorageAccountDataFromServer,
     ApiResponse<StorageAccountDataFromServer>
-  >('/storage/google-callback/', payload);
-
+  >('/storage/callback/', payload);
   return {
     ...response,
     data: apiDataResponseMapper<
@@ -62,7 +70,10 @@ export const connectStorageAccountRequest = async (
   };
 };
 
+// ---------------------------------------------------------------------------
 // Hooks
+// ---------------------------------------------------------------------------
+
 export const useGetStorageAccounts = (enabled: boolean = true) =>
   useQuery({
     queryKey: ['storage-accounts'],
@@ -71,16 +82,10 @@ export const useGetStorageAccounts = (enabled: boolean = true) =>
   });
 
 export const useDisconnectStorageAccount = () =>
-  useMutation({
-    mutationFn: disconnectStorageAccountRequest,
-  });
+  useMutation({ mutationFn: disconnectStorageAccountRequest });
 
 export const useGetOAuthUrl = () =>
-  useMutation({
-    mutationFn: getOAuthUrlRequest,
-  });
+  useMutation({ mutationFn: getOAuthUrlRequest });
 
 export const useConnectStorageAccount = () =>
-  useMutation({
-    mutationFn: connectStorageAccountRequest,
-  });
+  useMutation({ mutationFn: connectStorageAccountRequest });

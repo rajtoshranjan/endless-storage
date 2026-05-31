@@ -42,9 +42,10 @@ While the app is in "Testing" mode, Google will block any user not explicitly ad
 
 ## 6. Environment Configuration
 
-Add the following keys to the `.env` file in your project root (if it doesn't exist):
+Add the following keys to your `.env` file:
 
 ```env
-GOOGLE_CLIENT_ID="your_client_id_here"
-GOOGLE_CLIENT_SECRET="your_client_secret_here"
+OAUTH_REDIRECT_URI="http://localhost:3000/oauth/callback"
+GOOGLE_DRIVE_CLIENT_ID="your_client_id_here"
+GOOGLE_DRIVE_CLIENT_SECRET="your_client_secret_here"
 ```

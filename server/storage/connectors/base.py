@@ -22,7 +22,7 @@ class BaseStorageConnector(ABC):
         """
 
     @abstractmethod
-    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> str:
+    def get_upload_url(self, file_name: str, mime_type: str, origin: str = "") -> dict:
         """
         Return a URL the client can use to upload a file directly to the storage provider.
 
@@ -32,7 +32,7 @@ class BaseStorageConnector(ABC):
             origin: The request origin for CORS (used by providers that require it).
 
         Returns:
-            The direct upload URL.
+            Dict with 'url' (the direct upload URL) and 'method' (HTTP method, e.g. 'PUT' or 'POST').
         """
 
     @abstractmethod

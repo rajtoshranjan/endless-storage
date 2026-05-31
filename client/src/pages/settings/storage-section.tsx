@@ -1,4 +1,4 @@
-import { Cloud, CloudOff, Plus, Trash2 } from 'lucide-react';
+import { Cloud, CloudOff, ChevronDown, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertDialog,
@@ -14,6 +14,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ScrollArea,
 } from '../../components/ui';
 import { toast } from '../../hooks/use-toast';
@@ -26,9 +30,14 @@ import {
   useGetStorageAccounts,
   StorageAccountData,
 } from '../../services/apis';
+import { StorageProvider } from '../../services/apis/storage/types';
+
+// ---------------------------------------------------------------------------
+// Provider metadata
+// ---------------------------------------------------------------------------
 
 const PROVIDER_META: Record<
-  string,
+  StorageProvider,
   { label: string; color: string; bg: string }
 > = {
   google_drive: {
@@ -48,9 +57,21 @@ const PROVIDER_META: Record<
   },
 };
 
+const ALL_PROVIDERS: StorageProvider[] = [
+  'google_drive',
+  'onedrive',
+  'dropbox',
+];
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function StorageSection() {
   const popupRef = useRef<Window | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const connectingProviderRef = useRef<StorageProvider | null>(null);
+  const [connectingProvider, setConnectingProvider] =
+    useState<StorageProvider | null>(null);
   const [accountToDisconnect, setAccountToDisconnect] =
     useState<StorageAccountData | null>(null);
 
@@ -66,7 +87,7 @@ export function StorageSection() {
     useDisconnectStorageAccount();
 
   const responseData = storageAccountsResponse?.data;
-  const storageAccounts = responseData?.accounts || [];
+  const storageAccounts = responseData?.accounts ?? [];
   const quota = responseData?.quota;
 
   const handleOAuthMessage = useCallback(
@@ -74,34 +95,36 @@ export function StorageSection() {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== 'oauth-callback') return;
 
-      setIsConnecting(false);
+      const provider = connectingProviderRef.current;
+      connectingProviderRef.current = null;
+      setConnectingProvider(null);
 
-      if (event.data.error) {
-        toast({
-          title: 'Connection failed',
-          description: 'Failed to connect Google Drive. Please try again.',
-          variant: 'destructive',
-        });
+      if (event.data.error || !event.data.code || !provider) {
+        if (event.data.error) {
+          toast({
+            title: 'Connection failed',
+            description: `Failed to connect ${PROVIDER_META[provider ?? 'google_drive']?.label}. Please try again.`,
+            variant: 'destructive',
+          });
+        }
         return;
       }
 
-      if (event.data.code) {
-        connectStorageAccount(
-          { code: event.data.code },
-          {
-            onSuccess: () => {
-              refetchAccounts();
-              toast({
-                title: 'Connected!',
-                description: 'Google Drive has been connected successfully.',
-              });
-            },
-            onError: (error) => {
-              handleResponseErrorMessage(error);
-            },
+      const label = PROVIDER_META[provider].label;
+      connectStorageAccount(
+        { provider, code: event.data.code as string },
+        {
+          onSuccess: () => {
+            refetchAccounts();
+            toast({
+              title: 'Connected!',
+              description: `${label} has been connected successfully.`,
+            });
           },
-        );
-      }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onError: (error: any) => handleResponseErrorMessage(error),
+        },
+      );
     },
     [connectStorageAccount, refetchAccounts],
   );
@@ -111,31 +134,35 @@ export function StorageSection() {
     return () => window.removeEventListener('message', handleOAuthMessage);
   }, [handleOAuthMessage]);
 
-  const handleConnectStorage = () => {
-    setIsConnecting(true);
-    getOAuthUrl(undefined, {
-      onSuccess: (response) => {
-        const url = response.data.url;
-        const width = 500;
-        const height = 600;
-        const left = window.screen.width / 2 - width / 2;
-        const top = window.screen.height / 2 - height / 2;
+  const openOAuthPopup = (url: string, provider: StorageProvider) => {
+    const width = 500;
+    const height = 620;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    popupRef.current = window.open(
+      url,
+      `${provider}-oauth`,
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
+    );
+    const pollTimer = setInterval(() => {
+      if (popupRef.current?.closed) {
+        clearInterval(pollTimer);
+        connectingProviderRef.current = null;
+        setConnectingProvider(null);
+      }
+    }, 500);
+  };
 
-        popupRef.current = window.open(
-          url,
-          'google-oauth',
-          `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`,
-        );
+  const handleConnectProvider = (provider: StorageProvider) => {
+    connectingProviderRef.current = provider;
+    setConnectingProvider(provider);
 
-        const pollTimer = setInterval(() => {
-          if (popupRef.current?.closed) {
-            clearInterval(pollTimer);
-            setIsConnecting(false);
-          }
-        }, 500);
-      },
-      onError: (error) => {
-        setIsConnecting(false);
+    getOAuthUrl(provider, {
+      onSuccess: (response) => openOAuthPopup(response.data.url, provider),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onError: (error: any) => {
+        connectingProviderRef.current = null;
+        setConnectingProvider(null);
         handleResponseErrorMessage(error);
       },
     });
@@ -148,12 +175,10 @@ export function StorageSection() {
         setAccountToDisconnect(null);
         toast({
           title: 'Disconnected',
-          description: `${PROVIDER_META[account.provider]?.label || account.provider} has been disconnected.`,
+          description: `${PROVIDER_META[account.provider]?.label ?? account.provider} has been disconnected.`,
         });
       },
-      onError: (error) => {
-        handleResponseErrorMessage(error);
-      },
+      onError: (error) => handleResponseErrorMessage(error),
     });
   };
 
@@ -167,19 +192,47 @@ export function StorageSection() {
             system
           </p>
         </div>
-        <Button
-          onClick={handleConnectStorage}
-          disabled={isConnecting}
-          size="sm"
-          className="gap-2"
-        >
-          {isConnecting ? (
-            <div className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          ) : (
-            <Plus className="size-3.5" />
-          )}
-          Connect
-        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              className="gap-1.5"
+              disabled={connectingProvider !== null}
+            >
+              {connectingProvider ? (
+                <div className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Cloud className="size-3.5" />
+              )}
+              {connectingProvider
+                ? `Connecting ${PROVIDER_META[connectingProvider].label}…`
+                : 'Connect'}
+              {!connectingProvider && <ChevronDown className="size-3" />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {ALL_PROVIDERS.map((provider) => {
+              const meta = PROVIDER_META[provider];
+              return (
+                <DropdownMenuItem
+                  key={provider}
+                  onClick={() => handleConnectProvider(provider)}
+                >
+                  <div
+                    className={cn(
+                      'mr-2 flex size-5 items-center justify-center rounded-full',
+                      meta.bg,
+                    )}
+                  >
+                    <Cloud className={cn('size-3', meta.color)} />
+                  </div>
+                  {meta.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>
@@ -233,24 +286,33 @@ export function StorageSection() {
                   No storage connected
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground/70">
-                  Connect Google Drive to start uploading files
+                  Connect Google Drive, OneDrive, or Dropbox to start uploading
+                  files
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleConnectStorage}
-                disabled={isConnecting}
-                className="mt-1 gap-2"
-              >
-                <Cloud className="size-3.5" />
-                Connect Google Drive
-              </Button>
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {ALL_PROVIDERS.map((provider) => {
+                  const meta = PROVIDER_META[provider];
+                  return (
+                    <Button
+                      key={provider}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleConnectProvider(provider)}
+                      disabled={connectingProvider !== null}
+                      className="gap-1.5"
+                    >
+                      <Cloud className={cn('size-3.5', meta.color)} />
+                      {meta.label}
+                    </Button>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <ScrollArea className="h-[calc(100dvh-32rem)] w-full md:h-[calc(100dvh-27rem)]">
               {storageAccounts.map((account) => {
-                const meta = PROVIDER_META[account.provider] || {
+                const meta = PROVIDER_META[account.provider] ?? {
                   label: account.provider,
                   color: 'text-muted-foreground',
                   bg: 'bg-muted',
@@ -307,7 +369,7 @@ export function StorageSection() {
               Are you sure you want to disconnect{' '}
               <span className="font-semibold">
                 {accountToDisconnect &&
-                  (PROVIDER_META[accountToDisconnect.provider]?.label ||
+                  (PROVIDER_META[accountToDisconnect.provider]?.label ??
                     accountToDisconnect.provider)}
                 {accountToDisconnect?.providerEmail
                   ? ` (${accountToDisconnect.providerEmail})`

@@ -83,9 +83,15 @@ export const uploadFileRequest = async (
       const blob = payload.file.slice(offset, offset + chunk.chunk_size);
 
       // Upload chunk directly to cloud storage.
-      const uploadResponse = await axios.put(chunk.upload_url, blob, {
+      const uploadResponse = await axios.request({
+        method: chunk.upload_method,
+        url: chunk.upload_url,
+        data: blob,
         headers: {
-          'Content-Type': payload.file.type || 'application/octet-stream',
+          'Content-Type':
+            chunk.content_type ||
+            payload.file.type ||
+            'application/octet-stream',
         },
         signal,
         onUploadProgress: (progressEvent) => {
@@ -107,7 +113,7 @@ export const uploadFileRequest = async (
         },
       });
 
-      const externalChunkId = uploadResponse.data.id;
+      const externalChunkId = chunk.external_id || uploadResponse.data?.id;
 
       // Confirm chunk with server.
       await api.post<ConfirmChunkResponse, ApiResponse<ConfirmChunkResponse>>(

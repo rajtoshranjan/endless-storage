@@ -1,11 +1,12 @@
 from enum import Enum
 
+ENDLESS_STORAGE_FOLDER_NAME = "Endless Storage"
+
 
 class StorageProvider(Enum):
     GOOGLE_DRIVE = "google_drive"
-    # Future:
-    # ONEDRIVE = "onedrive"
-    # DROPBOX = "dropbox"
+    ONEDRIVE = "onedrive"
+    DROPBOX = "dropbox"
 
     @classmethod
     def choices(cls):
